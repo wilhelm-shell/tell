@@ -17,7 +17,12 @@ export function getBridgeConfig() {
   return { url: url.replace(/\/+$/, ''), token };
 }
 
+export function normalizeUrl(raw) {
+  const s = String(raw).trim().replace(/\/+$/, '');
+  return /^https?:\/\//i.test(s) ? s : 'http://' + s;
+}
+
 export function setBridgeConfig(url, token) {
-  localStorage.setItem('bridge.url', String(url).replace(/\/+$/, ''));
+  localStorage.setItem('bridge.url', normalizeUrl(url));
   localStorage.setItem('bridge.token', String(token));
 }

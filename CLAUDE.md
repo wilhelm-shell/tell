@@ -123,7 +123,10 @@ newer exists. Modern syntax that parses fine in Node will throw a
     Bypass` for the session.
   - `gdeploy install client/dist` — takes a **directory**, not a zip.
     So the normal deploy loop is `just client-build && gdeploy install
-    client/dist`.
+    client/dist`. Or run `just deploy-phone` (wraps
+    `scripts/deploy-phone.ps1`) which pins Node 22, bypasses the
+    PowerShell script-signing policy for that process, builds, and
+    installs — one command.
   - `gdeploy evaluate <app-id> "<js>"` runs JS in the installed app
     context. This is how to prefill `localStorage` (`bridge.url`,
     `bridge.token`) without typing on T9. `gdeploy list` finds the id.

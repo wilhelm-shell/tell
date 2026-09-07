@@ -21,3 +21,6 @@ client-test:
 
 package-client:
     cd client && npm run build && npm run package
+
+deploy-phone:
+    powershell -File scripts/deploy-phone.ps1
