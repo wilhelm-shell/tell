@@ -1,13 +1,17 @@
 import { timingSafeEqual } from 'node:crypto';
 
+export function safeEqualString(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
+
 const PREFIX = 'Bearer ';
 
 export function checkBearer(headerValue, expected) {
   if (typeof headerValue !== 'string') return false;
   if (!headerValue.startsWith(PREFIX)) return false;
-  const provided = headerValue.slice(PREFIX.length);
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
+  return safeEqualString(headerValue.slice(PREFIX.length), expected);
 }

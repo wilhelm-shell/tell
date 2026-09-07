@@ -1,4 +1,4 @@
-import { request } from '../lib/http.js';
+import { connect, toWsUrl } from '../lib/ws.js';
 import { getBridgeConfig, DEFAULTS } from '../config.js';
 
 export function render(root) {
@@ -14,7 +14,10 @@ export function render(root) {
   const status = root.querySelector('#status');
   function setStatus(text) { status.textContent = text; }
 
+  let currentWs = null;
+
   async function probe() {
+    if (currentWs) { try { currentWs.close(); } catch (_) {} currentWs = null; }
     const cfg = getBridgeConfig();
     if (!cfg) {
       setStatus('no bridge config. See src/config.js.');
@@ -22,14 +25,18 @@ export function render(root) {
     }
     setStatus('connecting…');
     try {
-      const res = await request({
-        method: 'GET',
-        url: cfg.url + '/hello',
+      const res = await connect({
+        url: toWsUrl(cfg.url),
         token: cfg.token,
         timeoutMs: DEFAULTS.requestTimeoutMs,
       });
-      const service = res.body && res.body.service ? res.body.service : 'unknown';
-      setStatus('connected: ' + service);
+      currentWs = res.ws;
+      const service = res.hello && res.hello.service ? res.hello.service : 'unknown';
+      setStatus('connected via ws: ' + service);
+      currentWs.onclose = function () {
+        setStatus('disconnected. press center to retry.');
+        currentWs = null;
+      };
     } catch (err) {
       setStatus('error: ' + err.message);
     }
@@ -47,6 +54,9 @@ export function render(root) {
   probe();
 
   return {
-    detach: function () { document.removeEventListener('keydown', onKey); },
+    detach: function () {
+      document.removeEventListener('keydown', onKey);
+      if (currentWs) { try { currentWs.close(); } catch (_) {} currentWs = null; }
+    },
   };
 }
