@@ -122,11 +122,14 @@ newer exists. Modern syntax that parses fine in Node will throw a
     `npm.cmd` or `Set-ExecutionPolicy -Scope Process -ExecutionPolicy
     Bypass` for the session.
   - `gdeploy install client/dist` — takes a **directory**, not a zip.
-    So the normal deploy loop is `just client-build && gdeploy install
+    So the raw deploy loop is `just client-build && gdeploy install
     client/dist`. Or run `just deploy-phone` (wraps
     `scripts/deploy-phone.ps1`) which pins Node 22, bypasses the
-    PowerShell script-signing policy for that process, builds, and
-    installs — one command.
+    PowerShell script-signing policy for that process, uninstalls old
+    tell copies (each install gets a new UUID), builds, installs,
+    launches, and pushes `bridge.url` + `bridge.token` (read from
+    `bridge/.env`) into localStorage via `gdeploy evaluate` — one
+    command, no T9 typing.
   - `gdeploy evaluate <app-id> "<js>"` runs JS in the installed app
     context. This is how to prefill `localStorage` (`bridge.url`,
     `bridge.token`) without typing on T9. `gdeploy list` finds the id.

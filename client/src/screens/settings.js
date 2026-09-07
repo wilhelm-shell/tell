@@ -43,9 +43,13 @@ export function render(root, ctx) {
   function onKey(e) {
     if (e.key === 'Enter') { save(); e.preventDefault(); return; }
     if (e.key === 'SoftRight' || e.key === 'Backspace') {
-      // Only go back if a config already exists; otherwise force the user
-      // to save first so the hello screen isn't stuck showing "no config".
-      if (getBridgeConfig()) ctx.navigate('hello');
+      // If a config already exists, go back to hello. Otherwise exit
+      // the app so the user is never trapped on a mandatory-save screen.
+      if (getBridgeConfig()) {
+        ctx.navigate('hello');
+      } else if (typeof window.close === 'function') {
+        window.close();
+      }
       e.preventDefault();
     }
   }
