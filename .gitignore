@@ -8,3 +8,4 @@ Thumbs.db
 # Client build artifacts and generated icons.
 client/dist/
 client/static/icons/
+client/tell-app.zip

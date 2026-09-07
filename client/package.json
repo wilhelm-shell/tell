@@ -10,6 +10,7 @@
     "prebuild": "node scripts/gen-icons.js",
     "build": "rollup -c",
     "dev": "rollup -c -w",
+    "package": "node scripts/package.js",
     "test": "node --test"
   },
   "devDependencies": {
@@ -17,6 +18,7 @@
     "@babel/preset-env": "^7.24.0",
     "@rollup/plugin-babel": "^6.0.4",
     "@rollup/plugin-node-resolve": "^15.2.3",
+    "archiver": "^8.0.0",
     "rollup": "^4.12.0",
     "rollup-plugin-copy": "^3.5.0"
   }

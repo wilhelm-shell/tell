@@ -102,11 +102,26 @@ newer exists. Modern syntax that parses fine in Node will throw a
 
 ## Toolchain & workflow
 
-- `just deploy-client` = build (Babel → bundle → zip with
-  manifest.webapp) → `gdeploy install` to the connected phone.
-- `just logs` = adb logcat filtered to our app tag. Instrument with
-  `console.log` generously behind a DEBUG flag; the log stream is the
-  only visibility into the device (nobody can see the screen but me).
+- `just client-build` = Babel → single IIFE bundle in `client/dist/`
+  (with `manifest.webapp` and static assets copied in). `just
+  package-client` additionally zips `dist/` into `client/tell-app.zip`
+  — only needed for WebIDE Fenix / OmniSD sideload paths.
+- **Deploy to phone via gdeploy** (BananaHackers,
+  https://gitlab.com/suborg/gdeploy — not on npm). Install once:
+  `git clone`, then `npm i && npm link`. Prereqs on PATH: `adb`
+  (Google SDK Platform Tools) and `zip` (scoop/choco/GnuWin32 on
+  Windows — git-for-windows ships unzip but not zip). Phone in dev
+  mode; verify with `adb devices`.
+  - `gdeploy install client/dist` — takes a **directory**, not a zip.
+    So the normal deploy loop is `just client-build && gdeploy install
+    client/dist`.
+  - `gdeploy evaluate <app-id> "<js>"` runs JS in the installed app
+    context. This is how to prefill `localStorage` (`bridge.url`,
+    `bridge.token`) without typing on T9. `gdeploy list` finds the id.
+- `just logs` (not yet wired) = adb logcat filtered to our app tag.
+  Instrument with `console.log` generously behind a DEBUG flag; the
+  log stream is the only visibility into the device (nobody can see
+  the screen but me).
 - `just bridge-dev` = run bridge locally; the client also runs in a
   desktop browser (feature-detects guard the moz APIs) for fast
   iteration — but **desktop rendering proves nothing about the phone**.

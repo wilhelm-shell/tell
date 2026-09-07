@@ -18,3 +18,6 @@ client-build:
 
 client-test:
     cd client && npm test
+
+package-client:
+    cd client && npm run build && npm run package

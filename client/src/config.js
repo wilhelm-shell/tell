@@ -16,3 +16,8 @@ export function getBridgeConfig() {
   if (!url || !token) return null;
   return { url: url.replace(/\/+$/, ''), token };
 }
+
+export function setBridgeConfig(url, token) {
+  localStorage.setItem('bridge.url', String(url).replace(/\/+$/, ''));
+  localStorage.setItem('bridge.token', String(token));
+}

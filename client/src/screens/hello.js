@@ -1,12 +1,12 @@
 import { connect, toWsUrl } from '../lib/ws.js';
 import { getBridgeConfig, DEFAULTS } from '../config.js';
 
-export function render(root) {
+export function render(root, ctx) {
   root.innerHTML =
     '<header class="titlebar">tell</header>' +
     '<main id="body"><p id="status">connecting…</p></main>' +
     '<footer class="softkeys">' +
-      '<span class="sk-left"></span>' +
+      '<span class="sk-left">settings</span>' +
       '<span class="sk-center">retry</span>' +
       '<span class="sk-right">exit</span>' +
     '</footer>';
@@ -20,7 +20,7 @@ export function render(root) {
     if (currentWs) { try { currentWs.close(); } catch (_) {} currentWs = null; }
     const cfg = getBridgeConfig();
     if (!cfg) {
-      setStatus('no bridge config. See src/config.js.');
+      setStatus('no bridge config.');
       return;
     }
     setStatus('connecting…');
@@ -44,6 +44,7 @@ export function render(root) {
 
   function onKey(e) {
     if (e.key === 'Enter') { probe(); e.preventDefault(); return; }
+    if (e.key === 'SoftLeft') { ctx.navigate('settings'); e.preventDefault(); return; }
     if (e.key === 'SoftRight' || e.key === 'Backspace') {
       if (typeof window.close === 'function') window.close();
       e.preventDefault();
