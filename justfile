@@ -9,3 +9,12 @@ bridge-dev:
 
 bridge-test:
     cd bridge && npm test
+
+client-install:
+    cd client && npm install
+
+client-build:
+    cd client && npm run build
+
+client-test:
+    cd client && npm test

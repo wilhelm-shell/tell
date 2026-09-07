@@ -4,3 +4,7 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
+
+# Client build artifacts and generated icons.
+client/dist/
+client/static/icons/

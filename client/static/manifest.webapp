@@ -1,0 +1,24 @@
+{
+  "name": "tell",
+  "description": "Personal messaging client",
+  "launch_path": "/index.html",
+  "type": "privileged",
+  "icons": {
+    "56": "/icons/icon-56.png",
+    "112": "/icons/icon-112.png"
+  },
+  "developer": {
+    "name": "Lukas Wyss"
+  },
+  "permissions": {
+    "systemXHR": {
+      "description": "Talk to the self-hosted bridge over HTTPS."
+    },
+    "desktop-notification": {
+      "description": "Show new-message notifications."
+    },
+    "alarms": {
+      "description": "Poll the bridge periodically when the app is in the background."
+    }
+  }
+}

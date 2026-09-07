@@ -1,7 +1,10 @@
 import { config } from './config.js';
 import { buildServer } from './server.js';
 
-const app = buildServer({ token: config.token });
+const app = await buildServer({
+  token: config.token,
+  allowedOrigins: config.allowedOrigins,
+});
 
 try {
   await app.listen({ port: config.port, host: config.host });
