@@ -146,6 +146,23 @@ newer exists. Modern syntax that parses fine in Node will throw a
   parsing). Client gets logic-level tests only (nav model, formatting);
   no headless-browser UI tests — the phone is the test.
 
+## State (2026-09-08, paused mid-project)
+
+Slices landed on `main` and pushed to `origin/main`:
+- **a** — bridge `/hello` + bearer auth.
+- **b** — client scaffold + CORS on bridge for desktop dev.
+- **c** — WebSocket transport at `/ws` with first-message auth.
+- **d** — settings screen (URL + token), navigation dispatcher, package-client.
+- **e.1** — `SignalManager` on bridge (spawn signal-cli daemon, TCP-poll,
+  restart-with-backoff, `not-installed` is a terminal state). Broadcasts
+  `signal.status` frames on WS. Disabled by default; opt in via
+  `SIGNAL_CLI_ENABLED=true` in `bridge/.env`.
+
+Next planned slice: **e.2** — bridge subscribes to signal-cli's JSON-RPC
+event stream, forwards incoming Signal messages as `signal.message` WS
+frames. Prerequisite: signal-cli installed on the Linux target and
+linked as a *secondary* device (out-of-band, one-time).
+
 ## How to work with me
 
 - I'm a Medizininformatik engineer; I self-host and read code. Explain
