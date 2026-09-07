@@ -109,9 +109,18 @@ newer exists. Modern syntax that parses fine in Node will throw a
 - **Deploy to phone via gdeploy** (BananaHackers,
   https://gitlab.com/suborg/gdeploy — not on npm). Install once:
   `git clone`, then `npm i && npm link`. Prereqs on PATH: `adb`
-  (Google SDK Platform Tools) and `zip` (scoop/choco/GnuWin32 on
-  Windows — git-for-windows ships unzip but not zip). Phone in dev
-  mode; verify with `adb devices`.
+  (Google SDK Platform Tools). Phone in dev mode; verify with
+  `adb devices`.
+  - **Run gdeploy on Node 22 (not 24).** gdeploy is Node-12-era code
+    that uploads the zip as a JS string via `String.fromCharCode`
+    per byte; on Node 24 the phone rejects the transferred file with
+    `NS_ERROR_FILE_CORRUPTED`. Node 22 works. Portable install:
+    unzip Node 22 to e.g. `C:\node22`, then per-shell:
+    `$env:PATH = "C:\node22;$env:PATH"`. npm link is per-Node-install
+    so re-run `npm i && npm link` in the gdeploy repo under Node 22.
+  - PowerShell may block `npm.ps1` (script signing) — either call
+    `npm.cmd` or `Set-ExecutionPolicy -Scope Process -ExecutionPolicy
+    Bypass` for the session.
   - `gdeploy install client/dist` — takes a **directory**, not a zip.
     So the normal deploy loop is `just client-build && gdeploy install
     client/dist`.
