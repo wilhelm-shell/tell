@@ -14,4 +14,10 @@ export const config = {
   host: env.BRIDGE_HOST ?? '127.0.0.1',
   token: required('BRIDGE_TOKEN'),
   allowedOrigins,
+  signal: {
+    enabled: env.SIGNAL_CLI_ENABLED === 'true',
+    bin: env.SIGNAL_CLI_BIN || 'signal-cli',
+    rpcHost: env.SIGNAL_CLI_RPC_HOST || '127.0.0.1',
+    rpcPort: Number(env.SIGNAL_CLI_RPC_PORT || 7583),
+  },
 };

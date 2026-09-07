@@ -4,7 +4,10 @@ import { getBridgeConfig, DEFAULTS } from '../config.js';
 export function render(root, ctx) {
   root.innerHTML =
     '<header class="titlebar">tell</header>' +
-    '<main id="body"><p id="status">connecting…</p></main>' +
+    '<main id="body">' +
+      '<p id="status">connecting…</p>' +
+      '<p id="signal">signal: —</p>' +
+    '</main>' +
     '<footer class="softkeys">' +
       '<span class="sk-left">settings</span>' +
       '<span class="sk-center">retry</span>' +
@@ -12,9 +15,17 @@ export function render(root, ctx) {
     '</footer>';
 
   const status = root.querySelector('#status');
+  const signal = root.querySelector('#signal');
   function setStatus(text) { status.textContent = text; }
+  function setSignal(text) { signal.textContent = 'signal: ' + text; }
 
   let currentWs = null;
+
+  function onServerEvent(msg) {
+    if (msg && msg.type === 'signal.status') {
+      setSignal(msg.status + (msg.message ? ' (' + msg.message + ')' : ''));
+    }
+  }
 
   async function probe() {
     if (currentWs) { try { currentWs.close(); } catch (_) {} currentWs = null; }
@@ -24,11 +35,13 @@ export function render(root, ctx) {
       return;
     }
     setStatus('connecting…');
+    setSignal('—');
     try {
       const res = await connect({
         url: toWsUrl(cfg.url),
         token: cfg.token,
         timeoutMs: DEFAULTS.requestTimeoutMs,
+        onEvent: onServerEvent,
       });
       currentWs = res.ws;
       const service = res.hello && res.hello.service ? res.hello.service : 'unknown';

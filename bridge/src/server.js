@@ -5,12 +5,9 @@ import { checkBearer, safeEqualString } from './auth.js';
 
 const WS_AUTH_TIMEOUT_MS = 5000;
 
-export async function buildServer({ token, allowedOrigins = [], logger = true } = {}) {
+export async function buildServer({ token, allowedOrigins = [], signal = null, logger = true } = {}) {
   const app = Fastify({ logger });
 
-  // Register CORS before the auth hook: preflight OPTIONS carry no auth
-  // header, so they must be answered by @fastify/cors and short-circuit
-  // before onRequest rejects them as unauthorized.
   if (allowedOrigins.length > 0) {
     await app.register(cors, {
       origin: allowedOrigins,
@@ -24,8 +21,6 @@ export async function buildServer({ token, allowedOrigins = [], logger = true } 
 
   app.addHook('onRequest', async (req, reply) => {
     if (req.method === 'OPTIONS') return;
-    // Browser WebSocket can't set Authorization; /ws authenticates in-band
-    // via the first frame after the socket opens.
     if (req.url === '/ws') return;
     if (!checkBearer(req.headers.authorization, token)) {
       reply.code(401).send({ error: 'unauthorized' });
@@ -33,6 +28,17 @@ export async function buildServer({ token, allowedOrigins = [], logger = true } 
   });
 
   app.get('/hello', async () => ({ ok: true, service: 'tell-bridge' }));
+
+  const authedSockets = new Set();
+
+  if (signal) {
+    signal.on('status', (evt) => {
+      const payload = JSON.stringify({ type: 'signal.status', ...evt });
+      for (const s of authedSockets) {
+        try { s.send(payload); } catch (_) {}
+      }
+    });
+  }
 
   app.get('/ws', { websocket: true }, (socket) => {
     let authed = false;
@@ -42,7 +48,7 @@ export async function buildServer({ token, allowedOrigins = [], logger = true } 
     }, WS_AUTH_TIMEOUT_MS);
 
     socket.on('message', (raw) => {
-      if (authed) return; // post-auth messages are for a future slice
+      if (authed) return;
       let msg;
       try { msg = JSON.parse(raw.toString()); }
       catch (_) { socket.close(4002, 'bad json'); return; }
@@ -57,10 +63,17 @@ export async function buildServer({ token, allowedOrigins = [], logger = true } 
       }
       authed = true;
       clearTimeout(timer);
+      authedSockets.add(socket);
       socket.send(JSON.stringify({ type: 'hello', service: 'tell-bridge' }));
+      if (signal) {
+        socket.send(JSON.stringify({ type: 'signal.status', status: signal.status }));
+      }
     });
 
-    socket.on('close', () => clearTimeout(timer));
+    socket.on('close', () => {
+      clearTimeout(timer);
+      authedSockets.delete(socket);
+    });
   });
 
   return app;
