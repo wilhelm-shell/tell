@@ -124,6 +124,26 @@ export function envelopeToReaction(params) {
   };
 }
 
+// Read sync from the primary phone: "these messages were read there",
+// each named by sender + sent timestamp. Returns [] when there are none.
+export function envelopeToReads(params) {
+  if (!params || typeof params !== 'object') return [];
+  const body = params.envelope
+    ? params
+    : (params.result && params.result.envelope ? params.result : null);
+  if (!body) return [];
+  const env = body.envelope;
+  const list = env.syncMessage && Array.isArray(env.syncMessage.readMessages)
+    ? env.syncMessage.readMessages
+    : [];
+  const out = [];
+  for (const r of list) {
+    if (!r || typeof r.timestamp !== 'number') continue;
+    out.push({ sender: r.senderNumber || r.sender || null, timestamp: r.timestamp });
+  }
+  return out;
+}
+
 // Persistent TCP client for the signal-cli daemon's JSON-RPC socket.
 // The wire format is one JSON object per line. Two kinds of frames come
 // back: notifications (a `method`, no `id`) that we turn into 'message'
@@ -250,7 +270,9 @@ export class SignalRpcClient extends EventEmitter {
       const msg = envelopeToMessage(frame.params);
       if (msg) { this.emit('message', msg); return; }
       const reaction = envelopeToReaction(frame.params);
-      if (reaction) this.emit('reaction', reaction);
+      if (reaction) { this.emit('reaction', reaction); return; }
+      const reads = envelopeToReads(frame.params);
+      if (reads.length > 0) this.emit('read', reads);
       return;
     }
     if (frame.id != null && this._pending.has(frame.id)) {

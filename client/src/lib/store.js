@@ -48,19 +48,16 @@ export function createStore(opts) {
 
   // Unread = incoming messages newer than the conversation's read mark.
   // A timestamp rather than a counter, so the backlog replayed after the
-  // app was killed is counted correctly against a mark saved earlier.
+  // app was killed is counted correctly. The marks live on the bridge:
+  // seeded via setMarks() after connect, moved by setMark() from live
+  // frames, and reported outward through onLastRead() when this device
+  // itself reads something (so the bridge, and the other devices, learn).
   const lastRead = {};
-  if (opts && opts.lastRead) {
-    for (const k in opts.lastRead) {
-      if (typeof opts.lastRead[k] === 'number') lastRead[k] = opts.lastRead[k];
-    }
-  }
   const onLastRead = opts && typeof opts.onLastRead === 'function' ? opts.onLastRead : null;
 
-  function setLastRead(key, ts) {
+  function setLastRead(key, ts, local) {
     if (!(ts > (lastRead[key] || 0))) return false;
     lastRead[key] = ts;
-    // Bound the persisted map: drop the oldest mark once over the cap.
     const keys = Object.keys(lastRead);
     if (keys.length > LAST_READ_CAP) {
       let oldestKey = null;
@@ -70,11 +67,26 @@ export function createStore(opts) {
       }
       if (oldestKey !== null) delete lastRead[oldestKey];
     }
-    if (onLastRead) {
-      const copy = {};
-      for (const k in lastRead) copy[k] = lastRead[k];
-      try { onLastRead(copy); } catch (_) {}
+    if (local && onLastRead) {
+      try { onLastRead(key, ts); } catch (_) {}
     }
+    return true;
+  }
+
+  // Marks from the bridge: the whole map after connect, or one live update.
+  // Neither is reported back out.
+  function setMarks(map) {
+    let changed = 0;
+    for (const k in map || {}) {
+      if (typeof map[k] === 'number' && setLastRead(k, map[k], false)) changed++;
+    }
+    if (changed > 0) notify();
+    return changed;
+  }
+
+  function setMark(key, ts) {
+    if (!setLastRead(key, ts, false)) return false;
+    notify();
     return true;
   }
 
@@ -145,8 +157,8 @@ export function createStore(opts) {
     total++;
     while (total > cap) evictOldest();
     // Something we sent (from any device) means we had read everything
-    // before it.
-    if (msg.direction === 'out' && msg.timestamp) setLastRead(key, msg.timestamp);
+    // before it. The bridge draws the same conclusion, so not reported.
+    if (msg.direction === 'out' && msg.timestamp) setLastRead(key, msg.timestamp, false);
     return true;
   }
 
@@ -186,7 +198,7 @@ export function createStore(opts) {
       const ts = msgs[i].msg.timestamp || 0;
       if (ts > newest) newest = ts;
     }
-    if (!setLastRead(key, newest)) return false;
+    if (!setLastRead(key, newest, true)) return false;
     notify();
     return true;
   }
@@ -253,6 +265,8 @@ export function createStore(opts) {
     list: list,
     get: get,
     markRead: markRead,
+    setMarks: setMarks,
+    setMark: setMark,
     applyReaction: applyReaction,
     totalUnread: totalUnread,
     subscribe: subscribe,

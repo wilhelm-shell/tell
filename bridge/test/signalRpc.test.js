@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
-import { SignalRpcClient, envelopeToMessage, envelopeToReaction } from '../src/signalRpc.js';
+import { SignalRpcClient, envelopeToMessage, envelopeToReaction, envelopeToReads } from '../src/signalRpc.js';
 
 // Shapes taken from the signal-cli 0.14.7 man page (signal-cli-jsonrpc.5)
 // and its published JSON schemas.
@@ -286,6 +286,47 @@ test('client: reaction notifications are emitted as reaction events', async () =
     await sleep(50);
     assert.equal(got.length, 1);
     assert.equal(got[0].emoji, '👍');
+  } finally {
+    client.stop();
+    await d.close();
+  }
+});
+
+// --- read sync --------------------------------------------------------------
+
+test('envelopeToReads: readMessages from the primary phone; nothing otherwise', () => {
+  const params = {
+    envelope: {
+      source: '+41000000000', sourceNumber: '+41000000000', timestamp: 5000,
+      syncMessage: { readMessages: [
+        { sender: '+33123456789', senderNumber: '+33123456789', senderUuid: 'u', timestamp: 1000 },
+        { senderNumber: '+2', timestamp: 2000 },
+        { timestamp: 'nope' },
+      ] },
+    },
+    account: '+41000000000',
+  };
+  assert.deepEqual(envelopeToReads(params), [
+    { sender: '+33123456789', timestamp: 1000 },
+    { sender: '+2', timestamp: 2000 },
+  ]);
+  assert.deepEqual(envelopeToReads(direct), []);
+  assert.deepEqual(envelopeToReads(null), []);
+  assert.equal(envelopeToMessage(params), null, 'a read sync is not a message');
+});
+
+test('client: read syncs are emitted as read events', async () => {
+  const d = await fakeDaemon();
+  const client = new SignalRpcClient({ host: '127.0.0.1', port: d.port });
+  try {
+    const got = [];
+    client.on('read', (r) => got.push(r));
+    client.start();
+    await once(client, 'connected');
+    const conn = await d.waitConn(1);
+    conn.write(notification({ envelope: { sourceNumber: '+me', timestamp: 9, syncMessage: { readMessages: [{ senderNumber: '+1', timestamp: 4 }] } } }));
+    await sleep(50);
+    assert.deepEqual(got, [[{ sender: '+1', timestamp: 4 }]]);
   } finally {
     client.stop();
     await d.close();

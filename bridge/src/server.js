@@ -11,6 +11,7 @@ export async function buildServer({
   allowedOrigins = [],
   signal = null,
   backlog = null,
+  readMarks = null,
   handlers = {},
   attachments = null,
   logger = true,
@@ -112,6 +113,11 @@ export async function buildServer({
       socket.send(JSON.stringify({ type: 'hello', service: 'tell-bridge' }));
       if (signal) {
         socket.send(JSON.stringify({ type: 'signal.status', status: signal.status }));
+      }
+      // Read marks before the backlog, so unread counts are right on the
+      // first render.
+      if (readMarks) {
+        socket.send(JSON.stringify({ type: 'signal.readmarks', marks: readMarks.all() }));
       }
       // Replay recent messages as ONE frame so the client can tell history
       // from live traffic and apply it in a single pass. Sent after the

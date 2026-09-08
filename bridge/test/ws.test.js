@@ -190,3 +190,25 @@ test('authed request gets a reply with the same id; failures and unknown types r
     await app.close();
   }
 });
+
+test('authed client receives the read marks before the backlog', async () => {
+  const readMarks = { all: () => ({ 'p:+1': 42 }) };
+  const backlog = createBacklog(10);
+  backlog.push({ type: 'signal.message', text: 'x' });
+  const app = await buildServer({ token: TOKEN, readMarks, backlog, logger: false });
+  await app.listen({ port: 0, host: '127.0.0.1' });
+  const url = `ws://127.0.0.1:${app.server.address().port}/ws`;
+  try {
+    const ws = new WebSocket(url);
+    await new Promise((r) => ws.once('open', r));
+    const frames = collect(ws, 3);
+    ws.send(JSON.stringify({ type: 'auth', token: TOKEN }));
+    const [hello, marks, bl] = await frames;
+    assert.equal(hello.type, 'hello');
+    assert.deepEqual(marks, { type: 'signal.readmarks', marks: { 'p:+1': 42 } });
+    assert.equal(bl.type, 'signal.backlog');
+    ws.close();
+  } finally {
+    await app.close();
+  }
+});

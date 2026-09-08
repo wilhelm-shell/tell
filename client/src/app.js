@@ -6,7 +6,6 @@ import { connect, toWsUrl } from './lib/ws.js';
 import { request as httpRequest } from './lib/http.js';
 import { getBridgeConfig, DEFAULTS } from './config.js';
 import { createStore, parseKey } from './lib/store.js';
-import { loadLastRead, saveLastRead } from './lib/readState.js';
 import { reconnectDelay } from './lib/backoff.js';
 import { createThumbCache } from './lib/thumbs.js';
 
@@ -15,10 +14,16 @@ import { createThumbCache } from './lib/thumbs.js';
 const THUMB_W = 200;
 const THUMB_H = 120;
 
+// Read marks live on the bridge (they must survive a reinstall, and other
+// devices move them too). The store is seeded from the bridge after auth
+// and reports this device's own reads back to it.
 export const store = createStore({
   cap: DEFAULTS.messageCacheCap,
-  lastRead: loadLastRead(),
-  onLastRead: saveLastRead,
+  onLastRead: function (key, timestamp) {
+    request('signal.markRead', { key: key, timestamp: timestamp }).then(null, function () {
+      // Offline or racing a reconnect: the next open reports it again.
+    });
+  },
 });
 
 // conn: 'idle' | 'no-config' | 'connecting' | 'connected' | 'disconnected' | 'error'
@@ -73,6 +78,10 @@ function onServerEvent(msg) {
     store.add(msg);
   } else if (msg.type === 'signal.reaction') {
     store.applyReaction(msg);
+  } else if (msg.type === 'signal.readmarks' && msg.marks) {
+    store.setMarks(msg.marks);
+  } else if (msg.type === 'signal.read') {
+    store.setMark(msg.key, msg.timestamp);
   } else if (msg.type === 'signal.backlog' && Array.isArray(msg.messages)) {
     // History replayed by the bridge right after auth; the store drops
     // anything it already has (reconnects replay the same backlog).
