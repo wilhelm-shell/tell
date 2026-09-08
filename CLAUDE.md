@@ -69,6 +69,9 @@ newer exists. Modern syntax that parses fine in Node will throw a
     right = back/options). Follow this convention everywhere.
   - Maintain an explicit focus model (our `src/lib/nav.js`): one
     focused element per screen, visible focus style, focus never lost.
+    An item taller than the screen must be pageable: pass the scrolling
+    element as `opts.scroller` so Up/Down page within it before moving
+    on. Without that, long messages are unreadable on a D-pad.
   - Text input uses the platform's native T9 in `<input>`/`<textarea>`;
     do not intercept or re-implement typing.
 - **Packaging:** `manifest.webapp` (NOT manifest.json / PWA manifest).
@@ -177,7 +180,7 @@ newer exists. Modern syntax that parses fine in Node will throw a
   parsing). Client gets logic-level tests only (nav model, formatting);
   no headless-browser UI tests — the phone is the test.
 
-## State (2026-09-09, after slice m.4)
+## State (2026-09-09, after slice ui.3)
 
 Slices landed on `main`:
 - **a** — bridge `/hello` + bearer auth.
@@ -262,6 +265,12 @@ Slices landed on `main`:
   (centre play/pause, Left/Right seek, left softkey position/duration).
   Signal GIFs (Giphy MP4) play on the Energizer. Larger phone videos
   untested; a transcoding slice (ffmpeg in the image) only if they fail.
+- **ui.3** — chat layout. `lib/chat.js` (`layoutMessages`: day
+  separators + sender runs, `summarizeReactions`, `formatDay`), bubbles
+  full width (grey in / blue out, tail on the last of a run, time
+  floated into the last line), reaction pill expands on focus. Long
+  messages clamp to ~6 lines until focused; `nav.js` `opts.scroller`
+  pages through an item taller than the screen before moving focus.
 
 WS protocol so far (all JSON, one object per frame): client→bridge
 `auth` first, then requests `{type, id, ...}` (`signal.send`,
