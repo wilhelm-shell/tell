@@ -46,7 +46,10 @@ newer exists. Modern syntax that parses fine in Node will throw a
   - No Intl niceties beyond basics; date formatting is manual.
 - **Screen: 240×320 (QVGA), 2.4 inches.** Design for ~10 rows of text.
   One column. No horizontal scrolling, ever. Font sizes in px, minimum
-  14px for body text.
+  14px for body text. **The app does NOT get all 320px:** the KaiOS
+  status bar stays on top of a normal app, so size `html, body` to
+  `100%`, never to 320px. A fixed height hid the softkey bar below the
+  visible edge for several slices and desktop rendering never showed it.
 - **Memory: 512 MB total device RAM, our budget is tens of MB.** Cap
   in-memory message cache (constant in `src/config.js`). No unbounded
   arrays, no keeping full conversation history in DOM. Virtualize or
@@ -162,7 +165,7 @@ newer exists. Modern syntax that parses fine in Node will throw a
   parsing). Client gets logic-level tests only (nav model, formatting);
   no headless-browser UI tests — the phone is the test.
 
-## State (2026-09-08, after slice i)
+## State (2026-09-08, after slice ui.1)
 
 Slices landed on `main`:
 - **a** — bridge `/hello` + bearer auth.
@@ -204,6 +207,10 @@ Slices landed on `main`:
   itself. Client: single-line `<input>` in the conversation view (Enter
   or left softkey sends; centre key is Enter on KaiOS, so no textarea),
   focus ring paused while composing. Verified on the Energizer.
+- **ui.1** — procedural launcher icon (`client/scripts/gen-icons.js`,
+  no deps), styled softkey bar with consistent labels, status dot in the
+  title bar, time on list rows, sentence-length empty/error states.
+  Fixed the 320px body that hid the softkey bar (see screen constraint).
 
 WS protocol so far (all JSON, one object per frame): client→bridge
 `auth` first, then requests `{type, id, ...}`; bridge→client `hello`,
