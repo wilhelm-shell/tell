@@ -162,7 +162,7 @@ newer exists. Modern syntax that parses fine in Node will throw a
   parsing). Client gets logic-level tests only (nav model, formatting);
   no headless-browser UI tests — the phone is the test.
 
-## State (2026-09-08, after slice h)
+## State (2026-09-08, after slice i)
 
 Slices landed on `main`:
 - **a** — bridge `/hello` + bearer auth.
@@ -195,15 +195,30 @@ Slices landed on `main`:
   frames, sent as one `signal.backlog` frame after hello + status.
   In-memory only. Client store dedups on sender + timestamp; `addMany`
   applies the backlog with one render.
+- **i** — send path. `SignalRpcClient.call()` (id-correlated requests,
+  timeout, rejects pending on drop); bridge discovers the account via
+  `listAccounts` on each connect. WS gains a generic request/reply pair:
+  authed frame with `id` + handled `type` → `{type:'reply', id, ok,
+  result|error}`. `signal.send` handler (`bridge/src/signalSend.js`)
+  maps to signal-cli `send` and broadcasts the outgoing `signal.message`
+  itself. Client: single-line `<input>` in the conversation view (Enter
+  or left softkey sends; centre key is Enter on KaiOS, so no textarea),
+  focus ring paused while composing. Verified on the Energizer.
+
+WS protocol so far (all JSON, one object per frame): client→bridge
+`auth` first, then requests `{type, id, ...}`; bridge→client `hello`,
+`signal.status`, `signal.backlog` (once, after auth), `signal.message`
+(live), `reply` (to a request).
 
 Next planned slices, in rough order:
-- **i** — send path: client composes a reply in the conversation view
-  (native T9 in a `<textarea>`), bridge issues a JSON-RPC `send` request
-  over the daemon socket and correlates the response by `id`
-  (`SignalRpcClient` ignores responses today).
-- Later: reconnect on visibilitychange, mozAlarms wake, disk persistence
-  of the backlog on the `/data` volume behind the same cap/switch,
-  Compose deploy to the Linux server (needs its own `signal-link`).
+- **j** — lifecycle: reconnect on `visibilitychange`/foreground (the
+  CLAUDE.md rule), show unread count per row, clear on open.
+- **k** — disk persistence of the backlog on the `/data` volume behind
+  the same cap and a `BRIDGE_PERSIST` switch, so a bridge restart does
+  not empty the phone.
+- Later: mozAlarms wake for background polling, Compose deploy to the
+  Linux server (needs its own `signal-link`), attachments (receive
+  only), Telegram track.
 
 ## How to work with me
 
