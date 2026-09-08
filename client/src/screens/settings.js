@@ -11,7 +11,7 @@ function escapeAttr(s) {
 export function render(root, ctx) {
   const cfg = getBridgeConfig() || { url: '', token: '' };
   root.innerHTML =
-    '<header class="titlebar">settings</header>' +
+    '<header class="titlebar">Settings</header>' +
     '<main id="body">' +
       '<div class="settings-field">' +
         '<label for="fld-url">bridge url</label>' +
@@ -21,11 +21,12 @@ export function render(root, ctx) {
         '<label for="fld-token">token</label>' +
         '<input id="fld-token" type="password" data-focusable value="' + escapeAttr(cfg.token) + '">' +
       '</div>' +
+      '<p class="hint">Bridge address and bearer token, as in bridge/.env. Centre saves.</p>' +
     '</main>' +
     '<footer class="softkeys">' +
       '<span class="sk-left"></span>' +
-      '<span class="sk-center">save</span>' +
-      '<span class="sk-right">back</span>' +
+      '<span class="sk-center">Save</span>' +
+      '<span class="sk-right">Back</span>' +
     '</footer>';
 
   const urlInput = root.querySelector('#fld-url');

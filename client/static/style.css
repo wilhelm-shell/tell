@@ -1,8 +1,11 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Size to the viewport the app actually gets, not the panel: KaiOS keeps
+   its status bar at the top of a normal (non-fullscreen) app, so a fixed
+   320px body pushes the softkey bar below the visible area. */
 html, body {
-  width: 240px;
-  height: 320px;
+  width: 100%;
+  height: 100%;
   font-family: sans-serif;
   font-size: 14px;
   background: #000;
@@ -17,40 +20,157 @@ html, body {
   height: 100%;
 }
 
+/* --- chrome: title bar and softkey bar ---------------------------------- */
+
 .titlebar {
   height: 24px;
   line-height: 24px;
   padding: 0 6px;
-  background: #222;
+  background: #141e2e;
   color: #fff;
   font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-main#body {
-  flex: 1;
-  padding: 8px;
-  overflow-y: auto;
-  word-wrap: break-word;
+/* Connection state as a dot before the title. The word next to it says
+   the same thing, so colour is never the only signal. */
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  margin-right: 6px;
+  vertical-align: middle;
+  background: #666;
 }
+.dot-ok   { background: #4c4; }
+.dot-warn { background: #fc3; }
+.dot-err  { background: #e44; }
+.dot-off  { background: #666; }
 
 .softkeys {
   height: 24px;
   line-height: 24px;
   padding: 0 6px;
-  background: #222;
+  background: #141e2e;
+  border-top: 1px solid #2a3a52;
   display: flex;
   flex-direction: row;
   align-items: center;
 }
+.softkeys .sk-left,
+.softkeys .sk-right {
+  flex: 1;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #cfd6e0;
+  white-space: nowrap;
+}
+.softkeys .sk-left   { text-align: left; }
+.softkeys .sk-center { flex: 1; text-align: center; font-weight: bold; color: #fff; white-space: nowrap; }
+.softkeys .sk-right  { text-align: right; }
 
-.softkeys .sk-left   { flex: 1; text-align: left; }
-.softkeys .sk-center { flex: 1; text-align: center; }
-.softkeys .sk-right  { flex: 1; text-align: right; }
+/* --- body ---------------------------------------------------------------- */
+
+main#body {
+  flex: 1;
+  overflow-y: auto;
+  word-wrap: break-word;
+}
+
+.muted { color: #888; }
+.empty { color: #888; padding: 12px 8px; line-height: 1.4; }
+.hint  { color: #888; font-size: 12px; padding: 4px 8px; line-height: 1.4; }
+[hidden] { display: none; }
 
 .focused { outline: 2px solid #ff0; }
 
+/* --- conversation list --------------------------------------------------- */
+
+.rows { list-style: none; }
+.row {
+  padding: 4px 6px 4px 8px;
+  border-bottom: 1px solid #1c1c1c;
+  border-left: 3px solid transparent;
+}
+.row-top {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+}
+.row-title {
+  flex: 1;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row-time {
+  color: #aaa;
+  font-size: 12px;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+.row-preview {
+  color: #aaa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row.focused {
+  outline: none;
+  background: #26334a;
+  border-left-color: #ff0;
+}
+
+/* --- conversation view --------------------------------------------------- */
+
+.msgs { list-style: none; }
+.msg {
+  padding: 4px 6px 4px 8px;
+  border-bottom: 1px solid #1c1c1c;
+  border-left: 3px solid transparent;
+}
+.msg-out { border-left-color: #2a5a8a; }
+.msg-out .msg-head { text-align: right; }
+.msg-head {
+  color: #aaa;
+  font-size: 12px;
+}
+.msg-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.msg.focused {
+  outline: none;
+  background: #26334a;
+  border-left-color: #ff0;
+}
+
+.compose {
+  padding: 4px 6px;
+  border-top: 1px solid #2a3a52;
+  background: #0b1220;
+}
+.compose input {
+  width: 100%;
+  padding: 4px;
+  border: 1px solid #ff0;
+  background: #000;
+  color: #eee;
+  font-size: 14px;
+  font-family: sans-serif;
+}
+.compose input:disabled { color: #888; border-color: #444; }
+.compose-err { color: #f66; font-size: 12px; }
+
+/* --- settings ------------------------------------------------------------ */
+
 .settings-field {
-  margin-bottom: 8px;
+  margin: 8px 8px 0;
 }
 .settings-field label {
   display: block;
@@ -72,68 +192,3 @@ main#body {
   outline: 2px solid #ff0;
   border-color: #ff0;
 }
-
-.muted { color: #888; }
-[hidden] { display: none; }
-
-.rows { list-style: none; }
-.row {
-  padding: 4px 6px;
-  border-bottom: 1px solid #222;
-}
-.row-title {
-  font-weight: bold;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.row-preview {
-  color: #aaa;
-  font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.row.focused {
-  outline: none;
-  background: #333;
-  border-left: 3px solid #ff0;
-}
-
-.msgs { list-style: none; }
-.msg {
-  padding: 4px 6px;
-  border-bottom: 1px solid #222;
-  border-left: 3px solid transparent;
-}
-.msg-out { border-left-color: #446; }
-.msg-head {
-  color: #aaa;
-  font-size: 12px;
-}
-.msg-text {
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-.msg.focused {
-  outline: none;
-  background: #333;
-  border-left-color: #ff0;
-}
-
-.compose {
-  padding: 4px 6px;
-  border-top: 1px solid #444;
-  background: #111;
-}
-.compose input {
-  width: 100%;
-  padding: 4px;
-  border: 1px solid #ff0;
-  background: #000;
-  color: #eee;
-  font-size: 14px;
-  font-family: sans-serif;
-}
-.compose input:disabled { color: #888; border-color: #444; }
-.compose-err { color: #f66; font-size: 12px; min-height: 0; }

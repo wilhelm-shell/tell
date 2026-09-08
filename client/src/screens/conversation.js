@@ -21,9 +21,9 @@ export function render(root, ctx) {
       '<p id="compose-err" class="compose-err"></p>' +
     '</div>' +
     '<footer class="softkeys">' +
-      '<span class="sk-left" id="sk-left">reply</span>' +
+      '<span class="sk-left" id="sk-left">Reply</span>' +
       '<span class="sk-center"></span>' +
-      '<span class="sk-right" id="sk-right">back</span>' +
+      '<span class="sk-right" id="sk-right">Back</span>' +
     '</footer>';
 
   const title = root.querySelector('#title');
@@ -47,7 +47,7 @@ export function render(root, ctx) {
     const conv = currentConv();
     if (!conv) {
       title.textContent = 'tell';
-      msgs.innerHTML = '<li class="muted">conversation gone</li>';
+      msgs.innerHTML = '<li class="empty">This conversation is no longer in memory.</li>';
       shownCount = 0;
       return;
     }
@@ -89,7 +89,7 @@ export function render(root, ctx) {
     composeErr.textContent = '';
     compose.hidden = false;
     ring.setEnabled(false);
-    setSoftkeys('send', 'cancel');
+    setSoftkeys('Send', 'Cancel');
     input.focus();
   }
 
@@ -103,7 +103,7 @@ export function render(root, ctx) {
     input.blur();
     ring.setEnabled(true);
     ring.focusAt(Math.max(ring.currentIndex(), 0));
-    setSoftkeys('reply', 'back');
+    setSoftkeys('Reply', 'Back');
   }
 
   function send() {
@@ -115,15 +115,15 @@ export function render(root, ctx) {
     sending = true;
     input.disabled = true;
     composeErr.textContent = '';
-    setSoftkeys('sending…', 'cancel');
+    setSoftkeys('Sending…', 'Cancel');
     app.sendMessage(conv, text).then(function () {
       stopCompose();
     }, function (err) {
       // Keep the text so a retry is one key press.
       sending = false;
       input.disabled = false;
-      composeErr.textContent = 'failed: ' + err.message;
-      setSoftkeys('send', 'cancel');
+      composeErr.textContent = 'Not sent: ' + err.message;
+      setSoftkeys('Send', 'Cancel');
       input.focus();
     });
   }

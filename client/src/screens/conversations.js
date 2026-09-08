@@ -1,5 +1,5 @@
 import { attachFocusRing } from '../lib/nav.js';
-import { formatPreview, escapeHtml } from '../lib/format.js';
+import { formatPreview, formatTime, escapeHtml } from '../lib/format.js';
 import * as app from '../app.js';
 
 // Never put more rows in the DOM than this; the screen shows ~6 at once.
@@ -16,19 +16,33 @@ function statusWord(s) {
   }
 }
 
+// Dot colour class for the title bar. Mirrors statusWord; the word is
+// always shown too.
+function statusDot(s) {
+  if (s.conn === 'connecting') return 'dot-warn';
+  if (s.conn === 'error' || s.conn === 'disconnected') return 'dot-err';
+  if (s.conn !== 'connected') return 'dot-off';
+  const sig = s.signal;
+  if (sig.indexOf('ready') === 0) return 'dot-ok';
+  if (sig.indexOf('starting') === 0 || sig.indexOf('retrying') === 0) return 'dot-warn';
+  if (sig.indexOf('disabled') === 0) return 'dot-off';
+  return 'dot-err';
+}
+
 export function render(root, ctx) {
   root.innerHTML =
-    '<header class="titlebar" id="title">tell</header>' +
+    '<header class="titlebar"><span class="dot" id="dot"></span><span id="title">tell</span></header>' +
     '<main id="body">' +
-      '<p id="status" class="muted"></p>' +
+      '<p id="status" class="empty"></p>' +
       '<ul id="list" class="rows"></ul>' +
     '</main>' +
     '<footer class="softkeys">' +
-      '<span class="sk-left">settings</span>' +
+      '<span class="sk-left">Settings</span>' +
       '<span class="sk-center" id="sk-center"></span>' +
-      '<span class="sk-right">exit</span>' +
+      '<span class="sk-right">Exit</span>' +
     '</footer>';
 
+  const dot = root.querySelector('#dot');
   const title = root.querySelector('#title');
   const status = root.querySelector('#status');
   const list = root.querySelector('#list');
@@ -39,23 +53,24 @@ export function render(root, ctx) {
 
   function renderStatus(s) {
     title.textContent = 'tell · ' + statusWord(s);
+    dot.className = 'dot ' + statusDot(s);
     if (s.conn === 'connected') {
       status.textContent = '';
       status.hidden = true;
     } else {
       status.hidden = false;
-      status.textContent = s.conn === 'error' ? 'error: ' + s.detail
-        : s.conn === 'no-config' ? 'no bridge config.'
-        : s.conn === 'disconnected' ? 'disconnected. press center to retry.'
-        : 'connecting…';
+      status.textContent = s.conn === 'error' ? 'Could not reach the bridge: ' + s.detail + '. Press the centre key to retry.'
+        : s.conn === 'no-config' ? 'No bridge configured yet. Open Settings with the left softkey.'
+        : s.conn === 'disconnected' ? 'Connection lost. Press the centre key to retry.'
+        : 'Connecting to the bridge…';
     }
-    skCenter.textContent = app.isConnected() ? 'open' : 'retry';
+    skCenter.textContent = app.isConnected() ? 'Open' : 'Retry';
   }
 
   function renderList() {
     const rows = app.store.list(MAX_ROWS);
     if (rows.length === 0) {
-      list.innerHTML = '<li class="muted">no messages yet</li>';
+      list.innerHTML = '<li class="empty">No conversations yet. Incoming messages appear here.</li>';
       return;
     }
     // Remember which row is focused, then rebuild. The newest conversation
@@ -68,7 +83,10 @@ export function render(root, ctx) {
       if (pendingFocusKey && r.key === pendingFocusKey) { focused = i; pendingFocusKey = null; }
       html +=
         '<li class="row" data-focusable data-key="' + escapeHtml(r.key) + '">' +
-          '<div class="row-title">' + escapeHtml(r.title) + '</div>' +
+          '<div class="row-top">' +
+            '<span class="row-title">' + escapeHtml(r.title) + '</span>' +
+            '<span class="row-time">' + escapeHtml(formatTime(r.last.timestamp)) + '</span>' +
+          '</div>' +
           '<div class="row-preview">' + escapeHtml(formatPreview(r.last)) + '</div>' +
         '</li>';
     }
