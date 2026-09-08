@@ -162,7 +162,7 @@ newer exists. Modern syntax that parses fine in Node will throw a
   parsing). Client gets logic-level tests only (nav model, formatting);
   no headless-browser UI tests — the phone is the test.
 
-## State (2026-09-08, after slice e.2)
+## State (2026-09-08, after slice f)
 
 Slices landed on `main`:
 - **a** — bridge `/hello` + bearer auth.
@@ -182,14 +182,22 @@ Slices landed on `main`:
   sync `sentMessage`) to flat `signal.message` WS frames via
   `app.broadcast`. Client shows the newest one as a `last:` line.
   Verified on the Energizer against the Windows Docker bridge.
+- **f** — conversation list as the main screen. `client/src/app.js` owns
+  the WebSocket and the store so they outlive screens; `lib/store.js`
+  groups by `group.id`/`peer`, newest first, global 200-message cap.
+  Rows render through `escapeHtml`, focus via `nav.js`. Enter only
+  reconnects so far.
 
-Next planned slice: **f** — conversation list screen on the client,
-in-memory and capped by `messageCacheCap`, keyed by `peer` or `group.id`
-from `signal.message` frames, navigated with the D-pad via `nav.js`.
-Still open after that: reconnect on visibilitychange, mozAlarms wake, the
-send path (JSON-RPC `send` over the same socket; responses with `id` are
-ignored by `SignalRpcClient` today), and deploying the Compose stack to
-the Linux server (needs its own `signal-link`).
+Next planned slices, in rough order:
+- **g** — conversation view: Enter opens a conversation, messages listed
+  oldest→newest, Back returns to the list.
+- **h** — bridge replay buffer: in-memory ring of the last N
+  `signal.message` frames sent right after WS auth, so the list is not
+  empty after the app was killed in the background.
+- Later: reconnect on visibilitychange, mozAlarms wake, send path
+  (JSON-RPC `send` over the same socket; responses with `id` are ignored
+  by `SignalRpcClient` today), Compose deploy to the Linux server (needs
+  its own `signal-link`).
 
 ## How to work with me
 
