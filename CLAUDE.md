@@ -41,6 +41,13 @@ newer exists. Modern syntax that parses fine in Node will throw a
     For anything beyond simple GET/POST, prefer XMLHttpRequest or our
     tiny wrapper in `src/lib/http.js`.
   - WebSocket: available and reliable — this is our main transport.
+  - `<video>`: assigning `src` alone never starts loading on the
+    Energizer; call `load()` and `play()` explicitly after setting it
+    (verified on device via probe, metadata then arrives in ~130 ms).
+    `canPlayType` reports H.264 High profile MP4 as playable. Media
+    elements cannot send our bearer header, so media is fetched as a
+    blob over XHR and played from a blob URL, which is why the bridge
+    caps raw media at 15 MB.
   - No Service Workers, no Web Push, no IndexedDB reliability promises —
     use localStorage (small!) and in-memory state.
   - No Intl niceties beyond basics; date formatting is manual.
@@ -136,6 +143,11 @@ newer exists. Modern syntax that parses fine in Node will throw a
   - `gdeploy evaluate <app-id> "<js>"` runs JS in the installed app
     context. This is how to prefill `localStorage` (`bridge.url`,
     `bridge.token`) without typing on T9. `gdeploy list` finds the id.
+    **It is also the on-device debugger:** inject a probe that writes
+    into `window.__p` (event names, timings, `canPlayType` results),
+    wait, then evaluate `JSON.stringify(window.__p)`. Found the video
+    `load()` quirk this way in minutes; logcat shows nothing from the
+    app. Use single quotes only inside the JS (PS 5.1 arg passing).
 - **Deploy (Docker):** `docker-compose.yml` at the repo root runs the bridge
   and signal-cli in ONE container (`bridge/Dockerfile`: Node 22 + Temurin
   JRE 25 + pinned signal-cli release; the bridge spawns the daemon as a
@@ -165,7 +177,7 @@ newer exists. Modern syntax that parses fine in Node will throw a
   parsing). Client gets logic-level tests only (nav model, formatting);
   no headless-browser UI tests — the phone is the test.
 
-## State (2026-09-09, after slice m.3)
+## State (2026-09-09, after slice m.4)
 
 Slices landed on `main`:
 - **a** — bridge `/hello` + bearer auth.
@@ -245,17 +257,20 @@ Slices landed on `main`:
   both). Client: blob XHR, `screens/image.js` viewer; centre key =
   Open on an image message, React otherwise (label follows focus via
   `nav.js` `onFocus`); viewer's centre key = React back on that message.
+- **m.4** — video played raw. `GET /attachments/:id/raw` for video
+  types + GIF by extension, 15 MB cap, no transcoding. `screens/video.js`
+  (centre play/pause, Left/Right seek, left softkey position/duration).
+  Signal GIFs (Giphy MP4) play on the Energizer. Larger phone videos
+  untested; a transcoding slice (ffmpeg in the image) only if they fail.
 
 WS protocol so far (all JSON, one object per frame): client→bridge
 `auth` first, then requests `{type, id, ...}` (`signal.send`,
 `signal.react`, `signal.contacts`); bridge→client `hello`,
 `signal.status`, `signal.backlog` (once, after auth), `signal.message`
 and `signal.reaction` (live), `reply` (to a request). REST: `/hello`,
-`/attachments/:id`.
+`/attachments/:id` (scaled JPEG), `/attachments/:id/raw` (video/GIF).
 
 Next planned slices, in rough order:
-- **m.4** — video / animated GIF (Signal "GIFs" are MP4): poster frame
-  first, test raw playback on device before deciding on transcoding.
 - **l** — deploy the Compose stack to the Linux server behind the
   reverse proxy (HTTPS, `wss://`), link signal-cli there, point the
   phone at it. First real-world use.
