@@ -8,6 +8,12 @@ import { getBridgeConfig, DEFAULTS } from './config.js';
 import { createStore, parseKey } from './lib/store.js';
 import { loadLastRead, saveLastRead } from './lib/readState.js';
 import { reconnectDelay } from './lib/backoff.js';
+import { createThumbCache } from './lib/thumbs.js';
+
+// Bubble thumbnails: a bubble is ~220 px wide; 120 px tall keeps several
+// on screen and the decoded bitmap under 100 KB each.
+const THUMB_W = 200;
+const THUMB_H = 120;
 
 export const store = createStore({
   cap: DEFAULTS.messageCacheCap,
@@ -201,6 +207,15 @@ export function fetchAttachment(id, w, h) {
     timeoutMs: 30000,
   }).then(function (res) { return res.body; });
 }
+
+// Thumbnails for bubbles: small scaled copies, cached as blob URLs and
+// bounded (see lib/thumbs.js). App-level so a re-render is instant.
+export const thumbs = createThumbCache({
+  max: 30,
+  fetch: function (id) { return fetchAttachment(id, THUMB_W, THUMB_H); },
+  createUrl: function (blob) { return URL.createObjectURL(blob); },
+  revokeUrl: function (url) { URL.revokeObjectURL(url); },
+});
 
 // The unmodified file for media the phone plays itself (video). The
 // bridge refuses anything above its size cap, which is the point: a

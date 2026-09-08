@@ -321,3 +321,17 @@ main.viewer {
 main.viewer img { max-width: 100%; max-height: 100%; }
 
 main.viewer video { max-width: 100%; max-height: 100%; }
+
+/* --- inline thumbnails --------------------------------------------------- */
+
+.bubble-thumb {
+  margin: 1px 0 2px;
+  border-radius: 6px;
+  overflow: hidden;
+  max-width: 200px;
+}
+.bubble-thumb img { display: block; max-width: 100%; height: auto; }
+/* Until the blob arrives: a dark slot so the bubble does not jump much. */
+.bubble-thumb.thumb-pending { background: #111; min-height: 60px; }
+.bubble-thumb.thumb-pending img { visibility: hidden; }
+.bubble-thumb.thumb-failed { background: #311; min-height: 24px; }

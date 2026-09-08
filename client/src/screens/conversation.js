@@ -110,8 +110,14 @@ export function render(root, ctx) {
       const m = it.msg;
       const out = m.direction === 'out';
       // Keep line breaks in the full view (CSS pre-wrap); only attachment
-      // placeholders come from messageBody.
-      const body = m.text ? m.text : messageBody(m);
+      // placeholders come from messageBody. An image gets an inline
+      // thumbnail instead of the "(image)" placeholder; text, if any,
+      // goes under it.
+      const image = firstImage(m);
+      const body = m.text ? m.text : (image ? '' : messageBody(m));
+      const thumb = image
+        ? '<div class="bubble-thumb thumb-pending"><img data-att="' + escapeHtml(image.id) + '" alt=""></div>'
+        : '';
       const long = body.length > LONG_CHARS || body.split('\n').length > LONG_LINES;
       const name = !out && isGroup && it.first
         ? '<div class="bubble-name">' + escapeHtml(m.sourceName || m.source || '?') + '</div>'
@@ -125,6 +131,7 @@ export function render(root, ctx) {
         '<li class="msg ' + (out ? 'out' : 'in') + (it.first ? ' first' : '') + (it.last ? ' last' : '') + (long ? ' long' : '') + '" data-focusable>' +
           '<div class="bubble">' +
             name +
+            thumb +
             '<div class="bubble-text">' + escapeHtml(body) +
               '<span class="bubble-time">' + escapeHtml(formatTime(m.timestamp)) + '</span></div>' +
             (long ? '<div class="more">… more</div>' : '') +
@@ -133,6 +140,7 @@ export function render(root, ctx) {
         '</li>';
     }
     msgs.innerHTML = html;
+    loadThumbs();
     shownCount = shown.length;
     // List items are not focusable elements, so this never steals the
     // caret from the reply input while composing.
@@ -140,6 +148,23 @@ export function render(root, ctx) {
     // On screen means read. markRead notifies the store only when the
     // mark actually moved, so this does not loop back into renderMessages.
     app.store.markRead(key);
+  }
+
+  // Fill the thumbnail slots of the current render. A re-render replaces
+  // the <img> elements; a late result for a detached one is simply dropped.
+  function loadThumbs() {
+    const imgs = msgs.querySelectorAll('img[data-att]');
+    for (let i = 0; i < imgs.length; i++) {
+      (function (img) {
+        app.thumbs.get(img.getAttribute('data-att')).then(function (url) {
+          if (!url || !img.parentNode) return;
+          img.src = url;
+          img.parentNode.classList.remove('thumb-pending');
+        }, function () {
+          if (img.parentNode) img.parentNode.classList.add('thumb-failed');
+        });
+      })(imgs[i]);
+    }
   }
 
   function setSoftkeys(left, right, center) {
