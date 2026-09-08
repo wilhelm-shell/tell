@@ -165,7 +165,7 @@ newer exists. Modern syntax that parses fine in Node will throw a
   parsing). Client gets logic-level tests only (nav model, formatting);
   no headless-browser UI tests — the phone is the test.
 
-## State (2026-09-08, after slice ui.1)
+## State (2026-09-08, after slice j)
 
 Slices landed on `main`:
 - **a** — bridge `/hello` + bearer auth.
@@ -211,6 +211,12 @@ Slices landed on `main`:
   no deps), styled softkey bar with consistent labels, status dot in the
   title bar, time on list rows, sentence-length empty/error states.
   Fixed the 320px body that hid the softkey bar (see screen constraint).
+- **j** — lifecycle + unread. `app.js` reconnects on `visibilitychange`
+  and retries a dropped socket with 2/5/10/30s backoff while visible
+  only (`lib/backoff.js`). Unread = incoming messages newer than a
+  per-conversation read mark (`store.markRead`, moved by opening or by
+  any message we sent), persisted in localStorage (`lib/readState.js`,
+  capped at 100 keys). Row badge + total in the title bar.
 
 WS protocol so far (all JSON, one object per frame): client→bridge
 `auth` first, then requests `{type, id, ...}`; bridge→client `hello`,
@@ -218,14 +224,14 @@ WS protocol so far (all JSON, one object per frame): client→bridge
 (live), `reply` (to a request).
 
 Next planned slices, in rough order:
-- **j** — lifecycle: reconnect on `visibilitychange`/foreground (the
-  CLAUDE.md rule), show unread count per row, clear on open.
 - **k** — disk persistence of the backlog on the `/data` volume behind
   the same cap and a `BRIDGE_PERSIST` switch, so a bridge restart does
   not empty the phone.
-- Later: mozAlarms wake for background polling, Compose deploy to the
-  Linux server (needs its own `signal-link`), attachments (receive
-  only), Telegram track.
+- **l** — deploy the Compose stack to the Linux server behind the
+  reverse proxy (HTTPS, `wss://`), link signal-cli there, point the
+  phone at it. First real-world use.
+- Later: mozAlarms wake + `desktop-notification` for background
+  polling, attachments (receive only), Telegram track.
 
 ## How to work with me
 
