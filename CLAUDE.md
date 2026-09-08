@@ -162,9 +162,9 @@ newer exists. Modern syntax that parses fine in Node will throw a
   parsing). Client gets logic-level tests only (nav model, formatting);
   no headless-browser UI tests — the phone is the test.
 
-## State (2026-09-08, paused mid-project)
+## State (2026-09-08, after slice e.2)
 
-Slices landed on `main` and pushed to `origin/main`:
+Slices landed on `main`:
 - **a** — bridge `/hello` + bearer auth.
 - **b** — client scaffold + CORS on bridge for desktop dev.
 - **c** — WebSocket transport at `/ws` with first-message auth.
@@ -173,11 +173,23 @@ Slices landed on `main` and pushed to `origin/main`:
   restart-with-backoff, `not-installed` is a terminal state). Broadcasts
   `signal.status` frames on WS. Disabled by default; opt in via
   `SIGNAL_CLI_ENABLED=true` in `bridge/.env`.
+- **infra.1** — Docker packaging: bridge + signal-cli in one image, Compose
+  service with loopback-only port (`BRIDGE_BIND` override) and `/data`
+  volume, `signal-link` helper. `SIGNAL_CLI_DATA_DIR` → `--data-dir`;
+  daemon stdio inherited (unread pipes would block the JVM).
+- **e.2** — Signal receive path. Bridge keeps a TCP client on the daemon's
+  JSON-RPC socket, reduces `receive` notifications (data messages and
+  sync `sentMessage`) to flat `signal.message` WS frames via
+  `app.broadcast`. Client shows the newest one as a `last:` line.
+  Verified on the Energizer against the Windows Docker bridge.
 
-Next planned slice: **e.2** — bridge subscribes to signal-cli's JSON-RPC
-event stream, forwards incoming Signal messages as `signal.message` WS
-frames. Prerequisite: signal-cli installed on the Linux target and
-linked as a *secondary* device (out-of-band, one-time).
+Next planned slice: **f** — conversation list screen on the client,
+in-memory and capped by `messageCacheCap`, keyed by `peer` or `group.id`
+from `signal.message` frames, navigated with the D-pad via `nav.js`.
+Still open after that: reconnect on visibilitychange, mozAlarms wake, the
+send path (JSON-RPC `send` over the same socket; responses with `id` are
+ignored by `SignalRpcClient` today), and deploying the Compose stack to
+the Linux server (needs its own `signal-link`).
 
 ## How to work with me
 
