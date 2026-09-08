@@ -1,10 +1,16 @@
 import { attachFocusRing } from '../lib/nav.js';
 import { escapeHtml, messageBody, formatTime, firstImage, firstVideo } from '../lib/format.js';
+import { layoutMessages, summarizeReactions } from '../lib/chat.js';
 import * as app from '../app.js';
 
 // Only the tail of a conversation is rendered; the store's global cap is
 // 200 anyway, and the screen shows a handful of messages at once.
 const MAX_MESSAGES = 50;
+
+// Unfocused messages longer than this are clamped to a few lines; focusing
+// one expands it (and the focus ring pages through it).
+const LONG_CHARS = 240;
+const LONG_LINES = 5;
 
 // Signal's default quick reactions. Whether the phone's font draws them
 // is verify-on-device; the store treats the emoji as an opaque string.
@@ -12,6 +18,7 @@ const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
 export function render(root, ctx) {
   const key = ctx.params && ctx.params.key;
+  const isGroup = typeof key === 'string' && key.slice(0, 2) === 'g:';
 
   root.innerHTML =
     '<header class="titlebar" id="title">tell</header>' +
@@ -51,7 +58,7 @@ export function render(root, ctx) {
   // the focused one into view. That is how a D-pad scrolls a long list.
   // The centre key does the primary action of the highlighted message:
   // Open for an image, React for anything else. The label follows focus.
-  const ring = attachFocusRing(msgs, { onFocus: updateCenterLabel });
+  const ring = attachFocusRing(msgs, { onFocus: updateCenterLabel, scroller: root.querySelector('main') });
   let shownCount = -1;
   let shown = [];          // messages currently rendered, index = focus index
   let composing = false;
@@ -89,26 +96,40 @@ export function render(root, ctx) {
     const prev = ring.currentIndex();
     const followTail = shownCount < 0 || prev === shownCount - 1;
 
+    // Bubbles: incoming left, outgoing right; day separators between
+    // days; runs from one sender share a name label and tight spacing.
+    // Only message items are focus stops, so focus index == shown index.
+    const items = layoutMessages(shown);
     let html = '';
-    for (let i = 0; i < shown.length; i++) {
-      const m = shown[i];
-      const who = m.direction === 'out' ? 'me' : (m.sourceName || m.source || '?');
+    for (let k = 0; k < items.length; k++) {
+      const it = items[k];
+      if (it.type === 'day') {
+        html += '<li class="day">' + escapeHtml(it.label) + '</li>';
+        continue;
+      }
+      const m = it.msg;
+      const out = m.direction === 'out';
       // Keep line breaks in the full view (CSS pre-wrap); only attachment
       // placeholders come from messageBody.
       const body = m.text ? m.text : messageBody(m);
-      let reactions = '';
-      if (m.reactions && m.reactions.length > 0) {
-        const parts = [];
-        for (let j = 0; j < m.reactions.length; j++) {
-          parts.push(escapeHtml(m.reactions[j].emoji + ' ' + m.reactions[j].byName));
-        }
-        reactions = '<div class="msg-reactions">' + parts.join(' · ') + '</div>';
-      }
+      const long = body.length > LONG_CHARS || body.split('\n').length > LONG_LINES;
+      const name = !out && isGroup && it.first
+        ? '<div class="bubble-name">' + escapeHtml(m.sourceName || m.source || '?') + '</div>'
+        : '';
+      const rx = summarizeReactions(m.reactions);
+      const reactions = rx
+        ? '<div class="bubble-rx"><span class="rx-count">' + escapeHtml(rx.counts) + '</span>' +
+          '<span class="rx-names">' + escapeHtml(rx.names) + '</span></div>'
+        : '';
       html +=
-        '<li class="msg' + (m.direction === 'out' ? ' msg-out' : '') + '" data-focusable>' +
-          '<div class="msg-head">' + escapeHtml(who) + ' · ' + escapeHtml(formatTime(m.timestamp)) + '</div>' +
-          '<div class="msg-text">' + escapeHtml(body) + '</div>' +
-          reactions +
+        '<li class="msg ' + (out ? 'out' : 'in') + (it.first ? ' first' : '') + (it.last ? ' last' : '') + (long ? ' long' : '') + '" data-focusable>' +
+          '<div class="bubble">' +
+            name +
+            '<div class="bubble-text">' + escapeHtml(body) +
+              '<span class="bubble-time">' + escapeHtml(formatTime(m.timestamp)) + '</span></div>' +
+            (long ? '<div class="more">… more</div>' : '') +
+            reactions +
+          '</div>' +
         '</li>';
     }
     msgs.innerHTML = html;

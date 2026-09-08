@@ -136,27 +136,86 @@ main#body {
 
 /* --- conversation view --------------------------------------------------- */
 
-.msgs { list-style: none; }
-.msg {
-  padding: 4px 6px 4px 8px;
-  border-bottom: 1px solid #1c1c1c;
-  border-left: 3px solid transparent;
-}
-.msg-out { border-left-color: #2a5a8a; }
-.msg-out .msg-head { text-align: right; }
-.msg-head {
-  color: #aaa;
+.msgs { list-style: none; padding: 2px 0; }
+
+.day {
+  text-align: center;
+  color: #888;
   font-size: 12px;
+  padding: 3px 0 2px;
 }
-.msg-text {
+
+/* One row per message; the bubble sits left or right inside it. Dense on
+   purpose: ~10 text rows fit the panel, so every pixel of padding costs
+   a visible line. */
+.msg {
+  display: flex;
+  flex-direction: row;
+  padding: 0 4px 1px;
+}
+.msg.in  { justify-content: flex-start; }
+.msg.out { justify-content: flex-end; }
+.msg.first { padding-top: 3px; }
+
+.bubble {
+  max-width: 100%;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: #2a2f36;
+  color: #eee;
+}
+.msg.out .bubble { background: #1f4e7a; }
+/* Tail on the last bubble of a run, on the sender's side. */
+.msg.in.last  .bubble { border-bottom-left-radius: 2px; }
+.msg.out.last .bubble { border-bottom-right-radius: 2px; }
+
+.bubble-name {
+  font-size: 12px;
+  font-weight: bold;
+  color: #7cc4ff;
+}
+.bubble-text {
   white-space: pre-wrap;
   word-wrap: break-word;
 }
-.msg.focused {
-  outline: none;
-  background: #26334a;
-  border-left-color: #ff0;
+/* The time rides on the last line of the text instead of its own line. */
+.bubble-time {
+  float: right;
+  font-size: 11px;
+  color: #aab;
+  margin: 3px 0 0 6px;
 }
+.bubble-rx {
+  clear: both;
+  display: inline-block;
+  font-size: 12px;
+  background: #111;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 0 5px;
+  margin-top: 1px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bubble-rx .rx-names { display: none; }
+.msg.focused .bubble-rx .rx-count { display: none; }
+.msg.focused .bubble-rx .rx-names { display: inline; }
+.msg.focused .bubble-rx { white-space: normal; }
+
+/* Focus: a shadow ring follows the rounded corners and costs no layout. */
+.msg.focused { outline: none; }
+.msg.focused .bubble { box-shadow: 0 0 0 2px #ff0; }
+.msg.in.focused  .bubble { background: #39414d; }
+.msg.out.focused .bubble { background: #2a63a0; }
+
+/* Long messages: clamped until focused; the focus ring pages through a
+   bubble taller than the screen. */
+.msg.long .bubble-text { max-height: 6.4em; overflow: hidden; }
+.msg.long.focused .bubble-text { max-height: none; }
+.more { font-size: 11px; color: #aab; }
+.msg.focused .more { display: none; }
 
 .compose {
   padding: 4px 6px;
@@ -227,8 +286,6 @@ main#body {
 
 .row-more { color: #3aa0e6; white-space: normal; }
 .row-more.focused { color: #fff; }
-
-.msg-reactions { color: #aaa; font-size: 12px; margin-top: 2px; }
 
 /* --- reaction picker ----------------------------------------------------- */
 

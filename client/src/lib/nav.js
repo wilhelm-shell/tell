@@ -9,10 +9,16 @@ export function nextIndex(current, total, direction) {
 
 // DOM wrapper: manages focus among [data-focusable] descendants of `container`.
 // Softkeys are handled by whoever owns the screen — this only does Up/Down.
+//
 // opts.onFocus(index) fires after every focus move, so a screen can adapt
 // its softkey labels to the focused item.
+// opts.scroller: the scrolling element around the items. When given, an
+// item taller than the visible area is paged through with Up/Down before
+// focus moves on, so a long message can actually be read on a D-pad.
 export function attachFocusRing(container, opts) {
   const onFocus = opts && typeof opts.onFocus === 'function' ? opts.onFocus : null;
+  const scroller = opts && opts.scroller ? opts.scroller : null;
+
   function items() {
     return Array.prototype.slice.call(container.querySelectorAll('[data-focusable]'));
   }
@@ -33,11 +39,31 @@ export function attachFocusRing(container, opts) {
       if (i === target) all[i].classList.add('focused');
       else all[i].classList.remove('focused');
     }
-    if (typeof all[target].focus === 'function') all[target].focus();
+    const el = all[target];
+    if (typeof el.focus === 'function') el.focus();
     // List rows are not focusable elements, so focus() alone does not
-    // scroll them into view. Verify on device.
-    if (typeof all[target].scrollIntoView === 'function') all[target].scrollIntoView(false);
+    // scroll them into view. An item taller than the viewport is aligned
+    // to its top so reading starts at the beginning. Verify on device.
+    if (typeof el.scrollIntoView === 'function') {
+      const tall = scroller && el.offsetHeight > scroller.clientHeight;
+      el.scrollIntoView(!!tall);
+    }
     if (onFocus) onFocus(target);
+  }
+
+  // Page within the focused item when its far edge is still off-screen.
+  // Returns true when it scrolled instead of moving focus.
+  function pageWithin(direction) {
+    if (!scroller) return false;
+    const all = items();
+    const el = all[currentIndex()];
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    const s = scroller.getBoundingClientRect();
+    const step = Math.floor(scroller.clientHeight * 0.8);
+    if (direction > 0 && r.bottom > s.bottom + 1) { scroller.scrollTop += step; return true; }
+    if (direction < 0 && r.top < s.top - 1) { scroller.scrollTop -= step; return true; }
+    return false;
   }
 
   // A screen disables the ring while a text input owns Up/Down (T9 editing).
@@ -46,10 +72,10 @@ export function attachFocusRing(container, opts) {
   function onKey(e) {
     if (!enabled) return;
     if (e.key === 'ArrowDown') {
-      focusAt(nextIndex(currentIndex(), items().length, +1));
+      if (!pageWithin(+1)) focusAt(nextIndex(currentIndex(), items().length, +1));
       e.preventDefault();
     } else if (e.key === 'ArrowUp') {
-      focusAt(nextIndex(currentIndex(), items().length, -1));
+      if (!pageWithin(-1)) focusAt(nextIndex(currentIndex(), items().length, -1));
       e.preventDefault();
     }
   }
