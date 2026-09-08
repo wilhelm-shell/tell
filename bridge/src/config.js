@@ -16,6 +16,10 @@ export const config = {
   allowedOrigins,
   // How many recent signal.message frames to replay after WS auth; 0 disables.
   backlogCap: Number(env.BRIDGE_BACKLOG_CAP ?? 200),
+  // Keep the backlog on disk (inside BRIDGE_DATA_DIR) so a restart does not
+  // empty the phone. Off by default for a bare bridge; Compose turns it on.
+  persist: env.BRIDGE_PERSIST === 'true',
+  dataDir: env.BRIDGE_DATA_DIR || 'data',
   signal: {
     enabled: env.SIGNAL_CLI_ENABLED === 'true',
     bin: env.SIGNAL_CLI_BIN || 'signal-cli',

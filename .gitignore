@@ -9,3 +9,6 @@ Thumbs.db
 client/dist/
 client/static/icons/
 client/tell-app.zip
+
+# Bare-bridge backlog file (plaintext).
+bridge/data/

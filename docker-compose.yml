@@ -12,6 +12,8 @@ services:
       BRIDGE_HOST: 0.0.0.0
       BRIDGE_PORT: "8787"
       SIGNAL_CLI_DATA_DIR: /data/signal-cli
+      BRIDGE_PERSIST: "true"
+      BRIDGE_DATA_DIR: /data
     # Default binds to loopback only: on the server the reverse proxy
     # terminates TLS and forwards to 127.0.0.1:8787, nothing is reachable
     # from the LAN. For phone testing against a dev box, put

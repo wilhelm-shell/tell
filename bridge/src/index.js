@@ -3,6 +3,8 @@ import { buildServer } from './server.js';
 import { SignalManager, STATUS } from './signal.js';
 import { SignalRpcClient } from './signalRpc.js';
 import { createBacklog } from './backlog.js';
+import { fileStore } from './backlogFile.js';
+import { join } from 'node:path';
 import { buildSendParams, sentMessageFrame } from './signalSend.js';
 
 const signal = new SignalManager({
@@ -18,7 +20,11 @@ const rpc = new SignalRpcClient({
   port: config.signal.rpcPort,
 });
 
-const backlog = createBacklog(config.backlogCap);
+const backlogStore = config.persist ? fileStore(join(config.dataDir, 'backlog.json')) : null;
+const backlog = createBacklog(config.backlogCap, backlogStore, {
+  // `app` is assigned below; saves only happen after listen(), so it exists.
+  onError: (e) => app.log.warn({ err: e.message }, 'backlog save failed'),
+});
 
 // The daemon runs in multi-account mode, so every request needs the
 // account. Discovered from the daemon itself on each connect rather than
@@ -77,6 +83,7 @@ rpc.on('message', (m) => {
   app.broadcast(frame);
 });
 
+  app.log.info({ persist: !!backlogStore, cap: backlog.cap, loaded: backlog.loaded }, 'backlog');
 try {
   await app.listen({ port: config.port, host: config.host });
   await signal.start();
