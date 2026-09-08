@@ -21,7 +21,7 @@ export function render(root, ctx) {
   const isGroup = typeof key === 'string' && key.slice(0, 2) === 'g:';
 
   root.innerHTML =
-    '<header class="titlebar" id="title">tell</header>' +
+    '<header class="titlebar" id="title">Tell</header>' +
     '<main id="body">' +
       '<ul id="msgs" class="msgs"></ul>' +
     '</main>' +
@@ -77,7 +77,7 @@ export function render(root, ctx) {
   function renderMessages() {
     const conv = currentConv();
     if (!conv) {
-      title.textContent = 'tell';
+      title.textContent = 'Tell';
       msgs.innerHTML = '<li class="empty">This conversation is no longer in memory.</li>';
       shownCount = 0;
       return;

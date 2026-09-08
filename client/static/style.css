@@ -1,5 +1,9 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Light theme. Palette, kept literal on purpose (no custom properties,
+   Gecko 48):  page #fff / text #111 / chrome #e9eef5 / accent #2288cc /
+   focus #ff8a00 (amber: readable on white where yellow is not). */
+
 /* Size to the viewport the app actually gets, not the panel: KaiOS keeps
    its status bar at the top of a normal (non-fullscreen) app, so a fixed
    320px body pushes the softkey bar below the visible area. */
@@ -8,8 +12,8 @@ html, body {
   height: 100%;
   font-family: sans-serif;
   font-size: 14px;
-  background: #000;
-  color: #eee;
+  background: #fff;
+  color: #111;
   overflow: hidden;
 }
 
@@ -26,9 +30,10 @@ html, body {
   height: 24px;
   line-height: 24px;
   padding: 0 6px;
-  background: #141e2e;
-  color: #fff;
+  background: #e9eef5;
+  color: #111;
   font-weight: bold;
+  border-bottom: 1px solid #cfd8e3;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -43,19 +48,19 @@ html, body {
   border-radius: 4px;
   margin-right: 6px;
   vertical-align: middle;
-  background: #666;
+  background: #999;
 }
-.dot-ok   { background: #4c4; }
-.dot-warn { background: #fc3; }
-.dot-err  { background: #e44; }
-.dot-off  { background: #666; }
+.dot-ok   { background: #2a9d3a; }
+.dot-warn { background: #e0a800; }
+.dot-err  { background: #d33; }
+.dot-off  { background: #999; }
 
 .softkeys {
   height: 24px;
   line-height: 24px;
   padding: 0 6px;
-  background: #141e2e;
-  border-top: 1px solid #2a3a52;
+  background: #e9eef5;
+  border-top: 1px solid #cfd8e3;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -66,11 +71,11 @@ html, body {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #cfd6e0;
+  color: #445;
   white-space: nowrap;
 }
 .softkeys .sk-left   { text-align: left; }
-.softkeys .sk-center { flex: 1; text-align: center; font-weight: bold; color: #fff; white-space: nowrap; }
+.softkeys .sk-center { flex: 1; text-align: center; font-weight: bold; color: #111; white-space: nowrap; }
 .softkeys .sk-right  { text-align: right; }
 
 /* --- body ---------------------------------------------------------------- */
@@ -81,19 +86,19 @@ main#body {
   word-wrap: break-word;
 }
 
-.muted { color: #888; }
-.empty { color: #888; padding: 12px 8px; line-height: 1.4; }
-.hint  { color: #888; font-size: 12px; padding: 4px 8px; line-height: 1.4; }
+.muted { color: #777; }
+.empty { color: #777; padding: 12px 8px; line-height: 1.4; }
+.hint  { color: #777; font-size: 12px; padding: 4px 8px; line-height: 1.4; }
 [hidden] { display: none; }
 
-.focused { outline: 2px solid #ff0; }
+.focused { outline: 2px solid #ff8a00; }
 
 /* --- conversation list --------------------------------------------------- */
 
 .rows { list-style: none; }
 .row {
   padding: 4px 6px 4px 8px;
-  border-bottom: 1px solid #1c1c1c;
+  border-bottom: 1px solid #eee;
   border-left: 3px solid transparent;
 }
 .row-top {
@@ -108,30 +113,30 @@ main#body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.row.unread .row-title { font-weight: bold; color: #fff; }
+.row.unread .row-title { font-weight: bold; color: #000; }
 .row-unread {
-  color: #3aa0e6;
+  color: #2288cc;
   font-weight: bold;
   font-size: 12px;
   margin-left: 6px;
   white-space: nowrap;
 }
 .row-time {
-  color: #aaa;
+  color: #777;
   font-size: 12px;
   margin-left: 6px;
   white-space: nowrap;
 }
 .row-preview {
-  color: #aaa;
+  color: #666;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .row.focused {
   outline: none;
-  background: #26334a;
-  border-left-color: #ff0;
+  background: #e3eefb;
+  border-left-color: #ff8a00;
 }
 
 /* --- conversation view --------------------------------------------------- */
@@ -140,7 +145,7 @@ main#body {
 
 .day {
   text-align: center;
-  color: #888;
+  color: #777;
   font-size: 12px;
   padding: 3px 0 2px;
 }
@@ -161,10 +166,10 @@ main#body {
   max-width: 100%;
   padding: 2px 6px;
   border-radius: 8px;
-  background: #2a2f36;
-  color: #eee;
+  background: #eceff3;
+  color: #111;
 }
-.msg.out .bubble { background: #1f4e7a; }
+.msg.out .bubble { background: #2f7fd1; color: #fff; }
 /* Tail on the last bubble of a run, on the sender's side. */
 .msg.in.last  .bubble { border-bottom-left-radius: 2px; }
 .msg.out.last .bubble { border-bottom-right-radius: 2px; }
@@ -172,7 +177,7 @@ main#body {
 .bubble-name {
   font-size: 12px;
   font-weight: bold;
-  color: #7cc4ff;
+  color: #1a6fb8;
 }
 .bubble-text {
   white-space: pre-wrap;
@@ -182,15 +187,17 @@ main#body {
 .bubble-time {
   float: right;
   font-size: 11px;
-  color: #aab;
+  color: #667;
   margin: 3px 0 0 6px;
 }
+.msg.out .bubble-time { color: #d6e6f7; }
 .bubble-rx {
   clear: both;
   display: inline-block;
   font-size: 12px;
-  background: #111;
-  border: 1px solid #444;
+  background: #fff;
+  color: #111;
+  border: 1px solid #c9d2dc;
   border-radius: 8px;
   padding: 0 5px;
   margin-top: 1px;
@@ -206,93 +213,55 @@ main#body {
 
 /* Focus: a shadow ring follows the rounded corners and costs no layout. */
 .msg.focused { outline: none; }
-.msg.focused .bubble { box-shadow: 0 0 0 2px #ff0; }
-.msg.in.focused  .bubble { background: #39414d; }
-.msg.out.focused .bubble { background: #2a63a0; }
+.msg.focused .bubble { box-shadow: 0 0 0 2px #ff8a00; }
+.msg.in.focused  .bubble { background: #dfe6ee; }
+.msg.out.focused .bubble { background: #256cb8; }
 
 /* Long messages: clamped until focused; the focus ring pages through a
    bubble taller than the screen. */
 .msg.long .bubble-text { max-height: 6.4em; overflow: hidden; }
 .msg.long.focused .bubble-text { max-height: none; }
-.more { font-size: 11px; color: #aab; }
+.more { font-size: 11px; color: #667; }
+.msg.out .more { color: #d6e6f7; }
 .msg.focused .more { display: none; }
+
+/* --- inline thumbnails --------------------------------------------------- */
+
+.bubble-thumb {
+  margin: 1px 0 2px;
+  border-radius: 6px;
+  overflow: hidden;
+  max-width: 200px;
+}
+.bubble-thumb img { display: block; max-width: 100%; height: auto; }
+/* Until the blob arrives: a neutral slot so the bubble does not jump much. */
+.bubble-thumb.thumb-pending { background: #d5dbe3; min-height: 60px; }
+.bubble-thumb.thumb-pending img { visibility: hidden; }
+.bubble-thumb.thumb-failed { background: #f3d6d6; min-height: 24px; }
+
+/* --- compose and reaction picker ----------------------------------------- */
 
 .compose {
   padding: 4px 6px;
-  border-top: 1px solid #2a3a52;
-  background: #0b1220;
+  border-top: 1px solid #cfd8e3;
+  background: #f4f7fb;
 }
 .compose input {
   width: 100%;
   padding: 4px;
-  border: 1px solid #ff0;
-  background: #000;
-  color: #eee;
+  border: 1px solid #ff8a00;
+  background: #fff;
+  color: #111;
   font-size: 14px;
   font-family: sans-serif;
 }
-.compose input:disabled { color: #888; border-color: #444; }
-.compose-err { color: #f66; font-size: 12px; }
-
-/* --- settings ------------------------------------------------------------ */
-
-.settings-field {
-  margin: 8px 8px 0;
-}
-.settings-field label {
-  display: block;
-  font-size: 12px;
-  color: #aaa;
-  margin-bottom: 2px;
-}
-.settings-field input {
-  width: 100%;
-  padding: 4px;
-  border: 1px solid #444;
-  background: #111;
-  color: #eee;
-  font-size: 14px;
-  font-family: sans-serif;
-}
-.settings-field input.focused,
-.settings-field input:focus {
-  outline: 2px solid #ff0;
-  border-color: #ff0;
-}
-
-/* --- new message picker -------------------------------------------------- */
-
-.row-new { color: #3aa0e6; }
-.row-new.focused { color: #fff; }
-.picker { padding: 6px 6px 2px; }
-.picker input {
-  width: 100%;
-  padding: 4px;
-  border: 1px solid #444;
-  background: #111;
-  color: #eee;
-  font-size: 14px;
-  font-family: sans-serif;
-}
-.picker input.focused,
-.picker input:focus { outline: 2px solid #ff0; border-color: #ff0; }
-.dir-tag {
-  color: #aaa;
-  font-size: 12px;
-  margin-left: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.row-more { color: #3aa0e6; white-space: normal; }
-.row-more.focused { color: #fff; }
-
-/* --- reaction picker ----------------------------------------------------- */
+.compose input:disabled { color: #888; border-color: #bbb; background: #f4f4f4; }
+.compose-err { color: #c22; font-size: 12px; }
 
 .react {
   padding: 4px 6px;
-  border-top: 1px solid #2a3a52;
-  background: #0b1220;
+  border-top: 1px solid #cfd8e3;
+  background: #f4f7fb;
 }
 .react-bar {
   display: flex;
@@ -306,10 +275,10 @@ main#body {
   border: 2px solid transparent;
   border-radius: 4px;
 }
-.react-item.mine { border-color: #2a5a8a; }
-.react-item.focused { outline: none; border-color: #ff0; background: #26334a; }
+.react-item.mine { border-color: #2288cc; }
+.react-item.focused { outline: none; border-color: #ff8a00; background: #e3eefb; }
 
-/* --- image viewer -------------------------------------------------------- */
+/* --- image / video viewer ------------------------------------------------ */
 
 main.viewer {
   display: flex;
@@ -318,20 +287,58 @@ main.viewer {
   overflow: hidden;
   background: #000;
 }
-main.viewer img { max-width: 100%; max-height: 100%; }
-
+main.viewer img,
 main.viewer video { max-width: 100%; max-height: 100%; }
+main.viewer .empty { color: #ccc; }
 
-/* --- inline thumbnails --------------------------------------------------- */
+/* --- settings ------------------------------------------------------------ */
 
-.bubble-thumb {
-  margin: 1px 0 2px;
-  border-radius: 6px;
-  overflow: hidden;
-  max-width: 200px;
+.settings-field {
+  margin: 8px 8px 0;
 }
-.bubble-thumb img { display: block; max-width: 100%; height: auto; }
-/* Until the blob arrives: a dark slot so the bubble does not jump much. */
-.bubble-thumb.thumb-pending { background: #111; min-height: 60px; }
-.bubble-thumb.thumb-pending img { visibility: hidden; }
-.bubble-thumb.thumb-failed { background: #311; min-height: 24px; }
+.settings-field label {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 2px;
+}
+.settings-field input {
+  width: 100%;
+  padding: 4px;
+  border: 1px solid #bbb;
+  background: #fff;
+  color: #111;
+  font-size: 14px;
+  font-family: sans-serif;
+}
+.settings-field input.focused,
+.settings-field input:focus {
+  outline: 2px solid #ff8a00;
+  border-color: #ff8a00;
+}
+
+/* --- new message picker -------------------------------------------------- */
+
+.row-new { color: #2288cc; }
+.row-new.focused { color: #111; }
+.row-more { color: #2288cc; white-space: normal; }
+.row-more.focused { color: #111; }
+.picker { padding: 6px 6px 2px; }
+.picker input {
+  width: 100%;
+  padding: 4px;
+  border: 1px solid #bbb;
+  background: #fff;
+  color: #111;
+  font-size: 14px;
+  font-family: sans-serif;
+}
+.picker input.focused,
+.picker input:focus { outline: 2px solid #ff8a00; border-color: #ff8a00; }
+.dir-tag {
+  color: #777;
+  font-size: 12px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}

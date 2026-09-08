@@ -52,13 +52,13 @@ function encodePng(size, rgba) {
 }
 
 // --- the picture -----------------------------------------------------------
-// A speech bubble with three dots on a dark rounded square. Coordinates are
-// fractions of the icon size, so both sizes come from the same drawing.
+// A blue speech bubble with three white dots on a transparent background,
+// so it sits on the KaiOS launcher like the built-in icons. Coordinates
+// are fractions of the icon size, so both sizes come from the same drawing.
 // Edges are smoothed by rendering each pixel from a 4x4 grid of samples.
 
-const BG = [0x14, 0x1e, 0x2e];
-const BUBBLE = [0xf4, 0xf6, 0xf8];
-const DOT = [0x22, 0x88, 0xcc];
+const BUBBLE = [0x22, 0x88, 0xcc];
+const DOT = [0xff, 0xff, 0xff];
 const SUPERSAMPLE = 4;
 
 // Signed distance to a rounded box: negative inside.
@@ -85,12 +85,12 @@ function inTriangle(x, y, a, b, c) {
 
 // Colour at a point in [0,1]x[0,1]; null means transparent.
 function colorAt(x, y) {
-  if (roundedBox(x, y, 0.5, 0.5, 0.5, 0.5, 0.18) > 0) return null;
-  const bubble = roundedBox(x, y, 0.5, 0.45, 0.34, 0.22, 0.10) <= 0
-    || inTriangle(x, y, [0.30, 0.64], [0.46, 0.64], [0.27, 0.82]);
-  if (!bubble) return BG;
-  for (const cx of [0.36, 0.50, 0.64]) {
-    if (inCircle(x, y, cx, 0.45, 0.05)) return DOT;
+  // The bubble fills the icon box; the launcher supplies the background.
+  const bubble = roundedBox(x, y, 0.5, 0.42, 0.46, 0.32, 0.14) <= 0
+    || inTriangle(x, y, [0.22, 0.70], [0.44, 0.70], [0.18, 0.94]);
+  if (!bubble) return null;
+  for (const cx of [0.31, 0.50, 0.69]) {
+    if (inCircle(x, y, cx, 0.42, 0.07)) return DOT;
   }
   return BUBBLE;
 }

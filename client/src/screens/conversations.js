@@ -33,7 +33,7 @@ function statusDot(s) {
 
 export function render(root, ctx) {
   root.innerHTML =
-    '<header class="titlebar"><span class="dot" id="dot"></span><span id="title">tell</span></header>' +
+    '<header class="titlebar"><span class="dot" id="dot"></span><span id="title">Tell</span></header>' +
     '<main id="body">' +
       '<p id="status" class="empty"></p>' +
       '<ul id="list" class="rows"></ul>' +
@@ -55,7 +55,7 @@ export function render(root, ctx) {
 
   function renderStatus(s) {
     const unread = app.store.totalUnread();
-    title.textContent = 'tell' + (unread > 0 ? ' (' + unread + ')' : '') + ' · ' + statusWord(s);
+    title.textContent = 'Tell' + (unread > 0 ? ' (' + unread + ')' : '') + ' · ' + statusWord(s);
     dot.className = 'dot ' + statusDot(s);
     if (s.conn === 'connected') {
       status.textContent = '';
