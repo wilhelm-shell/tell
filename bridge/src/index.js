@@ -2,6 +2,7 @@ import { config } from './config.js';
 import { buildServer } from './server.js';
 import { SignalManager, STATUS } from './signal.js';
 import { SignalRpcClient } from './signalRpc.js';
+import { createBacklog } from './backlog.js';
 
 const signal = new SignalManager({
   enabled: config.signal.enabled,
@@ -16,10 +17,13 @@ const rpc = new SignalRpcClient({
   port: config.signal.rpcPort,
 });
 
+const backlog = createBacklog(config.backlogCap);
+
 const app = await buildServer({
   token: config.token,
   allowedOrigins: config.allowedOrigins,
   signal,
+  backlog,
 });
 
 // The RPC socket only makes sense while the daemon is up, so it follows
@@ -37,7 +41,9 @@ rpc.on('message', (m) => {
   // Deliberately no sender and no text: plaintext and contacts stay out
   // of the log stream.
   app.log.info({ direction: m.direction, timestamp: m.timestamp, group: !!m.group }, 'signal message');
-  app.broadcast({ type: 'signal.message', ...m });
+  const frame = { type: 'signal.message', ...m };
+  backlog.push(frame);
+  app.broadcast(frame);
 });
 
 try {

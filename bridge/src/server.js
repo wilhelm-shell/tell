@@ -5,7 +5,7 @@ import { checkBearer, safeEqualString } from './auth.js';
 
 const WS_AUTH_TIMEOUT_MS = 5000;
 
-export async function buildServer({ token, allowedOrigins = [], signal = null, logger = true } = {}) {
+export async function buildServer({ token, allowedOrigins = [], signal = null, backlog = null, logger = true } = {}) {
   const app = Fastify({ logger });
 
   if (allowedOrigins.length > 0) {
@@ -73,6 +73,12 @@ export async function buildServer({ token, allowedOrigins = [], signal = null, l
       socket.send(JSON.stringify({ type: 'hello', service: 'tell-bridge' }));
       if (signal) {
         socket.send(JSON.stringify({ type: 'signal.status', status: signal.status }));
+      }
+      // Replay recent messages as ONE frame so the client can tell history
+      // from live traffic and apply it in a single pass. Sent after the
+      // status frame; live frames follow in order, so no gap and no overlap.
+      if (backlog && backlog.size > 0) {
+        socket.send(JSON.stringify({ type: 'signal.backlog', messages: backlog.list() }));
       }
     });
 

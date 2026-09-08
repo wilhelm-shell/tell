@@ -2,11 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createStore, conversationKey } from '../src/lib/store.js';
 
+// Distinct timestamps per message: the store treats same source + timestamp as a duplicate.
+let nextTs = 1000;
 function incoming(peer, text, extra) {
-  return Object.assign({ direction: 'in', source: peer, sourceName: null, peer: peer, text: text, attachments: 0, group: null, timestamp: 1 }, extra || {});
+  return Object.assign({ direction: 'in', source: peer, sourceName: null, peer: peer, text: text, attachments: 0, group: null, timestamp: nextTs++ }, extra || {});
 }
 function outgoing(peer, text, extra) {
-  return Object.assign({ direction: 'out', source: '+41000000000', sourceName: 'Me', peer: peer, text: text, attachments: 0, group: null, timestamp: 1 }, extra || {});
+  return Object.assign({ direction: 'out', source: '+41000000000', sourceName: 'Me', peer: peer, text: text, attachments: 0, group: null, timestamp: nextTs++ }, extra || {});
 }
 const family = { id: 'grp1=', name: 'Family' };
 
@@ -86,4 +88,30 @@ test('get(key) returns title and messages oldest first, null when unknown', () =
   assert.equal(c.title, 'Alice');
   assert.deepEqual(c.messages.map((m) => m.text), ['a', 'b']);
   assert.equal(s.get('p:+404'), null);
+});
+
+test('duplicate (same source + timestamp) is dropped, e.g. backlog replayed on reconnect', () => {
+  const s = createStore({ cap: 100 });
+  const m = incoming('+1', 'a', { timestamp: 1000 });
+  assert.equal(s.add(m), true);
+  assert.equal(s.add(Object.assign({}, m)), false);
+  assert.equal(s.add(incoming('+1', 'a', { timestamp: 1001 })), true);
+  assert.equal(s.size(), 2);
+});
+
+test('addMany adds in order, skips duplicates, notifies once', () => {
+  const s = createStore({ cap: 100 });
+  let n = 0;
+  s.subscribe(() => { n++; });
+  s.add(incoming('+1', 'a', { timestamp: 1 }));
+  const added = s.addMany([
+    incoming('+1', 'a', { timestamp: 1 }),
+    incoming('+1', 'b', { timestamp: 2 }),
+    incoming('+2', 'c', { timestamp: 3 }),
+  ]);
+  assert.equal(added, 2);
+  assert.equal(n, 2);
+  assert.deepEqual(s.get('p:+1').messages.map((m) => m.text), ['a', 'b']);
+  assert.equal(s.addMany([]), 0);
+  assert.equal(n, 2);
 });

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
 import { buildServer } from '../src/server.js';
+import { createBacklog } from '../src/backlog.js';
 
 const TOKEN = 'test-token-1234567890';
 
@@ -102,6 +103,57 @@ test('app.broadcast reaches authed clients only', async () => {
     assert.equal(strangerGot, 0);
     authed.close();
     stranger.close();
+  } finally {
+    await app.close();
+  }
+});
+
+// hello and backlog are sent back to back, so collect from the start
+// instead of attaching a listener per frame.
+function collect(ws, n, timeoutMs = 2000) {
+  const got = [];
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`only ${got.length}/${n} frames`)), timeoutMs);
+    ws.on('message', (raw) => {
+      got.push(JSON.parse(raw.toString()));
+      if (got.length === n) { clearTimeout(t); resolve(got); }
+    });
+  });
+}
+
+test('authed client receives the backlog as one frame after hello', async () => {
+  const backlog = createBacklog(10);
+  backlog.push({ type: 'signal.message', text: 'first' });
+  backlog.push({ type: 'signal.message', text: 'second' });
+  const app = await buildServer({ token: TOKEN, backlog, logger: false });
+  await app.listen({ port: 0, host: '127.0.0.1' });
+  const url = `ws://127.0.0.1:${app.server.address().port}/ws`;
+  try {
+    const ws = new WebSocket(url);
+    await new Promise((r) => ws.once('open', r));
+    const frames = collect(ws, 2);
+    ws.send(JSON.stringify({ type: 'auth', token: TOKEN }));
+    const [hello, frame] = await frames;
+    assert.equal(hello.type, 'hello');
+    assert.equal(frame.type, 'signal.backlog');
+    assert.deepEqual(frame.messages.map((m) => m.text), ['first', 'second']);
+    ws.close();
+  } finally {
+    await app.close();
+  }
+});
+
+test('empty backlog sends no backlog frame', async () => {
+  const app = await buildServer({ token: TOKEN, backlog: createBacklog(10), logger: false });
+  await app.listen({ port: 0, host: '127.0.0.1' });
+  const url = `ws://127.0.0.1:${app.server.address().port}/ws`;
+  try {
+    const ws = new WebSocket(url);
+    await new Promise((r) => ws.once('open', r));
+    const frames = collect(ws, 2, 300);
+    ws.send(JSON.stringify({ type: 'auth', token: TOKEN }));
+    await assert.rejects(frames, /only 1\/2 frames/);
+    ws.close();
   } finally {
     await app.close();
   }

@@ -59,27 +59,53 @@ export function createStore(opts) {
     if (convs[victim].messages.length === 0) convs.splice(victim, 1);
   }
 
-  function add(msg) {
+  // Signal identifies a message by sender + timestamp. The bridge replays
+  // its backlog on every (re)connect, so the same message can arrive twice.
+  function isDuplicate(conv, msg) {
+    if (!msg.source || !msg.timestamp) return false;
+    for (let i = conv.messages.length - 1; i >= 0; i--) {
+      const m = conv.messages[i].msg;
+      if (m.timestamp === msg.timestamp && m.source === msg.source) return true;
+    }
+    return false;
+  }
+
+  function insert(msg) {
     const key = conversationKey(msg);
     if (!key) return false;
-    const entry = { seq: seq++, msg: msg };
     let idx = find(key);
     let conv;
     if (idx === -1) {
       conv = { key: key, title: titleFor(msg), hasName: titleIsName(msg), messages: [] };
     } else {
-      conv = convs.splice(idx, 1)[0];
+      conv = convs[idx];
+      if (isDuplicate(conv, msg)) return false;
+      convs.splice(idx, 1);
       if (!conv.hasName && titleIsName(msg)) {
         conv.title = titleFor(msg);
         conv.hasName = true;
       }
     }
-    conv.messages.push(entry);
+    conv.messages.push({ seq: seq++, msg: msg });
     convs.unshift(conv);
     total++;
     while (total > cap) evictOldest();
-    notify();
     return true;
+  }
+
+  function add(msg) {
+    const added = insert(msg);
+    if (added) notify();
+    return added;
+  }
+
+  // Backlog replay: many messages, one notification, so the list screen
+  // re-renders once instead of once per message.
+  function addMany(msgs) {
+    let added = 0;
+    for (let i = 0; i < msgs.length; i++) if (insert(msgs[i])) added++;
+    if (added > 0) notify();
+    return added;
   }
 
   // Summaries for the list screen, newest activity first.
@@ -111,5 +137,5 @@ export function createStore(opts) {
     };
   }
 
-  return { add: add, list: list, get: get, subscribe: subscribe, size: function () { return total; } };
+  return { add: add, addMany: addMany, list: list, get: get, subscribe: subscribe, size: function () { return total; } };
 }

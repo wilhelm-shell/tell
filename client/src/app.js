@@ -36,6 +36,10 @@ function onServerEvent(msg) {
     set({ signal: msg.status + (msg.message ? ' (' + msg.message + ')' : '') });
   } else if (msg.type === 'signal.message') {
     store.add(msg);
+  } else if (msg.type === 'signal.backlog' && Array.isArray(msg.messages)) {
+    // History replayed by the bridge right after auth; the store drops
+    // anything it already has (reconnects replay the same backlog).
+    store.addMany(msg.messages);
   }
 }
 

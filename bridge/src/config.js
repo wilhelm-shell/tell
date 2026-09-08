@@ -14,6 +14,8 @@ export const config = {
   host: env.BRIDGE_HOST ?? '127.0.0.1',
   token: required('BRIDGE_TOKEN'),
   allowedOrigins,
+  // How many recent signal.message frames to replay after WS auth; 0 disables.
+  backlogCap: Number(env.BRIDGE_BACKLOG_CAP ?? 200),
   signal: {
     enabled: env.SIGNAL_CLI_ENABLED === 'true',
     bin: env.SIGNAL_CLI_BIN || 'signal-cli',
