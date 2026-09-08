@@ -76,3 +76,14 @@ test('a message without peer or group is ignored', () => {
   assert.equal(s.add(outgoing(null, 'x')), false);
   assert.equal(s.size(), 0);
 });
+
+test('get(key) returns title and messages oldest first, null when unknown', () => {
+  const s = createStore({ cap: 100 });
+  s.add(incoming('+1', 'a', { sourceName: 'Alice' }));
+  s.add(outgoing('+1', 'b'));
+  s.add(incoming('+2', 'zzz'));
+  const c = s.get('p:+1');
+  assert.equal(c.title, 'Alice');
+  assert.deepEqual(c.messages.map((m) => m.text), ['a', 'b']);
+  assert.equal(s.get('p:+404'), null);
+});

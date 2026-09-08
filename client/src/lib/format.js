@@ -36,6 +36,21 @@ export function formatPreview(msg, maxLen) {
   return truncate(who + messageBody(msg), maxLen || 40);
 }
 
+function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+// "14:32" for today, "08.09. 14:32" otherwise. Manual on purpose: Intl on
+// this platform is not something to lean on. `now` is injectable for tests.
+export function formatTime(ts, now) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const n = new Date(now == null ? Date.now() : now);
+  const hm = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  const sameDay = d.getFullYear() === n.getFullYear()
+    && d.getMonth() === n.getMonth()
+    && d.getDate() === n.getDate();
+  return sameDay ? hm : pad2(d.getDate()) + '.' + pad2(d.getMonth() + 1) + '. ' + hm;
+}
+
 // For building innerHTML from untrusted text (message bodies, names).
 export function escapeHtml(s) {
   return String(s)

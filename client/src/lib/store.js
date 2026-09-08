@@ -93,6 +93,16 @@ export function createStore(opts) {
     return out;
   }
 
+  // One conversation with its messages oldest→newest, or null.
+  function get(key) {
+    const idx = find(key);
+    if (idx === -1) return null;
+    const c = convs[idx];
+    const messages = [];
+    for (let i = 0; i < c.messages.length; i++) messages.push(c.messages[i].msg);
+    return { key: c.key, title: c.title, messages: messages };
+  }
+
   function subscribe(fn) {
     listeners.push(fn);
     return function unsubscribe() {
@@ -101,5 +111,5 @@ export function createStore(opts) {
     };
   }
 
-  return { add: add, list: list, subscribe: subscribe, size: function () { return total; } };
+  return { add: add, list: list, get: get, subscribe: subscribe, size: function () { return total; } };
 }

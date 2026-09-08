@@ -34,6 +34,8 @@ export function render(root, ctx) {
   const list = root.querySelector('#list');
   const skCenter = root.querySelector('#sk-center');
   const ring = attachFocusRing(list);
+  // Coming back from a conversation: land on the row we left, not row 0.
+  let pendingFocusKey = ctx.params && ctx.params.focusKey ? ctx.params.focusKey : null;
 
   function renderStatus(s) {
     title.textContent = 'tell · ' + statusWord(s);
@@ -59,10 +61,11 @@ export function render(root, ctx) {
     // Remember which row is focused, then rebuild. The newest conversation
     // moves to the top, so the index may point at a different row after
     // a burst; acceptable for a list this short.
-    const focused = ring.currentIndex();
+    let focused = ring.currentIndex();
     let html = '';
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
+      if (pendingFocusKey && r.key === pendingFocusKey) { focused = i; pendingFocusKey = null; }
       html +=
         '<li class="row" data-focusable data-key="' + escapeHtml(r.key) + '">' +
           '<div class="row-title">' + escapeHtml(r.title) + '</div>' +
@@ -78,9 +81,13 @@ export function render(root, ctx) {
 
   function onKey(e) {
     if (e.key === 'Enter') {
-      // Opening a conversation is the next slice; until then center only
-      // reconnects when needed.
-      if (!app.isConnected()) app.connectBridge();
+      if (!app.isConnected()) {
+        app.connectBridge();
+      } else {
+        const row = list.querySelector('.focused');
+        const key = row ? row.getAttribute('data-key') : null;
+        if (key) ctx.navigate('conversation', { key: key });
+      }
       e.preventDefault();
       return;
     }

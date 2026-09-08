@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatLastMessage, formatPreview, escapeHtml } from '../src/lib/format.js';
+import { formatLastMessage, formatPreview, escapeHtml, formatTime } from '../src/lib/format.js';
 
 test('incoming direct message uses the sender name', () => {
   const s = formatLastMessage({ direction: 'in', sourceName: 'Alice', source: '+33123456789', text: 'hello', attachments: 0, group: null });
@@ -45,4 +45,13 @@ test('formatPreview prefixes me: and group senders', () => {
 
 test('escapeHtml neutralises markup', () => {
   assert.equal(escapeHtml('<b>&"x"'), '&lt;b&gt;&amp;&quot;x&quot;');
+});
+
+test('formatTime: HH:MM for today, DD.MM. HH:MM otherwise, empty for missing', () => {
+  const now = new Date(2026, 8, 8, 20, 0).getTime();
+  assert.equal(formatTime(new Date(2026, 8, 8, 14, 32).getTime(), now), '14:32');
+  assert.equal(formatTime(new Date(2026, 8, 8, 9, 5).getTime(), now), '09:05');
+  assert.equal(formatTime(new Date(2026, 8, 7, 23, 59).getTime(), now), '07.09. 23:59');
+  assert.equal(formatTime(new Date(2025, 0, 1, 0, 0).getTime(), now), '01.01. 00:00');
+  assert.equal(formatTime(null, now), '');
 });

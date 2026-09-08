@@ -99,3 +99,24 @@ main#body {
   background: #333;
   border-left: 3px solid #ff0;
 }
+
+.msgs { list-style: none; }
+.msg {
+  padding: 4px 6px;
+  border-bottom: 1px solid #222;
+  border-left: 3px solid transparent;
+}
+.msg-out { border-left-color: #446; }
+.msg-head {
+  color: #aaa;
+  font-size: 12px;
+}
+.msg-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.msg.focused {
+  outline: none;
+  background: #333;
+  border-left-color: #ff0;
+}
