@@ -82,7 +82,7 @@ export function sentMessageFrame(req, account, result) {
     peer: group ? null : req.peer,
     timestamp: result && result.timestamp ? result.timestamp : Date.now(),
     text,
-    attachments: 0,
+    attachments: [],
     group,
   };
 }

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatLastMessage, formatPreview, escapeHtml, formatTime } from '../src/lib/format.js';
+import { formatLastMessage, formatPreview, escapeHtml, formatTime, messageBody, attachmentCount, firstImage } from '../src/lib/format.js';
 
 test('incoming direct message uses the sender name', () => {
   const s = formatLastMessage({ direction: 'in', sourceName: 'Alice', source: '+33123456789', text: 'hello', attachments: 0, group: null });
@@ -23,7 +23,7 @@ test('outgoing sync message is labelled me', () => {
 });
 
 test('attachment-only message shows a count', () => {
-  assert.equal(formatLastMessage({ direction: 'in', sourceName: 'A', text: null, attachments: 1, group: null }), 'A: (1 attachment)');
+  assert.equal(formatLastMessage({ direction: 'in', sourceName: 'A', text: null, attachments: 1, group: null }), 'A: (attachment)');
   assert.equal(formatLastMessage({ direction: 'in', sourceName: 'A', text: null, attachments: 3, group: null }), 'A: (3 attachments)');
 });
 
@@ -54,4 +54,17 @@ test('formatTime: HH:MM for today, DD.MM. HH:MM otherwise, empty for missing', (
   assert.equal(formatTime(new Date(2026, 8, 7, 23, 59).getTime(), now), '07.09. 23:59');
   assert.equal(formatTime(new Date(2025, 0, 1, 0, 0).getTime(), now), '01.01. 00:00');
   assert.equal(formatTime(null, now), '');
+});
+
+test('attachment helpers: arrays and legacy counts, labels by kind', () => {
+  const img = { text: null, attachments: [{ id: 'a.jpg', contentType: 'image/jpeg' }] };
+  assert.equal(attachmentCount(img), 1);
+  assert.deepEqual(firstImage(img), { id: 'a.jpg', contentType: 'image/jpeg' });
+  assert.equal(messageBody(img), '(image)');
+  assert.equal(messageBody({ text: null, attachments: [{ id: 'v.mp4', contentType: 'video/mp4' }] }), '(video)');
+  assert.equal(messageBody({ text: null, attachments: [{ id: 'a.jpg', contentType: 'image/jpeg' }, { id: 'b.png', contentType: 'image/png' }] }), '(2 images)');
+  assert.equal(messageBody({ text: null, attachments: [{ id: 'a.jpg', contentType: 'image/jpeg' }, { id: 'v.mp4', contentType: 'video/mp4' }] }), '(2 attachments)');
+  assert.equal(messageBody({ text: null, attachments: 3 }), '(3 attachments)', 'legacy count from an old backlog file');
+  assert.equal(firstImage({ text: 'x', attachments: 2 }), null);
+  assert.equal(messageBody({ text: 'hi', attachments: [{ id: 'a.jpg', contentType: 'image/jpeg' }] }), 'hi', 'text wins');
 });

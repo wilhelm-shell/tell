@@ -7,6 +7,7 @@ export function request(opts) {
     url,
     token,
     timeoutMs = 10000,
+    responseType = null,   // 'blob' for images; default is text/JSON
   } = opts;
 
   return new Promise(function (resolve, reject) {
@@ -27,15 +28,21 @@ export function request(opts) {
 
     xhr.open(method, url, true);
     if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+    if (responseType) xhr.responseType = responseType;
 
     xhr.onload = function () {
       if (done) return;
       done = true;
       clearTimeout(timer);
-      let body = xhr.responseText;
-      const ct = xhr.getResponseHeader('Content-Type') || '';
-      if (ct.indexOf('application/json') !== -1) {
-        try { body = JSON.parse(body); } catch (_) { /* leave as text */ }
+      let body;
+      if (responseType) {
+        body = xhr.response;
+      } else {
+        body = xhr.responseText;
+        const ct = xhr.getResponseHeader('Content-Type') || '';
+        if (ct.indexOf('application/json') !== -1) {
+          try { body = JSON.parse(body); } catch (_) { /* leave as text */ }
+        }
       }
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve({ status: xhr.status, body: body });

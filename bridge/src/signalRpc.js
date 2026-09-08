@@ -43,8 +43,20 @@ export function envelopeToMessage(params) {
   }
 
   const text = typeof data.message === 'string' && data.message.length > 0 ? data.message : null;
-  const attachments = Array.isArray(data.attachments) ? data.attachments.length : 0;
-  if (text === null && attachments === 0) return null;
+  // Metadata only; the bytes are served scaled by /attachments/:id.
+  const attachments = [];
+  for (const a of Array.isArray(data.attachments) ? data.attachments : []) {
+    if (!a || typeof a.id !== 'string' || !a.id) continue;
+    attachments.push({
+      id: a.id,
+      contentType: typeof a.contentType === 'string' ? a.contentType : null,
+      filename: typeof a.filename === 'string' ? a.filename : null,
+      size: typeof a.size === 'number' ? a.size : null,
+      width: typeof a.width === 'number' ? a.width : null,
+      height: typeof a.height === 'number' ? a.height : null,
+    });
+  }
+  if (text === null && attachments.length === 0) return null;
 
   const group = data.groupInfo
     ? { id: data.groupInfo.groupId || null, name: data.groupInfo.groupName || null }

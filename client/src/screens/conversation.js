@@ -1,5 +1,5 @@
 import { attachFocusRing } from '../lib/nav.js';
-import { escapeHtml, messageBody, formatTime } from '../lib/format.js';
+import { escapeHtml, messageBody, formatTime, firstImage } from '../lib/format.js';
 import * as app from '../app.js';
 
 // Only the tail of a conversation is rendered; the store's global cap is
@@ -49,7 +49,9 @@ export function render(root, ctx) {
 
   // Messages are the focus stops: Up/Down walks them, and nav.js scrolls
   // the focused one into view. That is how a D-pad scrolls a long list.
-  const ring = attachFocusRing(msgs);
+  // The centre key does the primary action of the highlighted message:
+  // Open for an image, React for anything else. The label follows focus.
+  const ring = attachFocusRing(msgs, { onFocus: updateCenterLabel });
   let shownCount = -1;
   let shown = [];          // messages currently rendered, index = focus index
   let composing = false;
@@ -133,29 +135,71 @@ export function render(root, ctx) {
     return null;
   }
 
+  function focusedMessage() {
+    const i = ring.currentIndex();
+    return i >= 0 && i < shown.length ? shown[i] : null;
+  }
+
+  function updateCenterLabel() {
+    if (composing || reacting) return;
+    const m = focusedMessage();
+    skCenter.textContent = m && firstImage(m) ? 'Open' : 'React';
+  }
+
+  function pickerItems() {
+    const items = [];
+    for (let i = 0; i < REACTIONS.length; i++) items.push({ label: REACTIONS[i], emoji: REACTIONS[i] });
+    return items;
+  }
+
   function renderReactBar() {
     const mine = reacting ? myReaction(reacting.message) : null;
     let html = '';
-    for (let i = 0; i < REACTIONS.length; i++) {
-      const cls = 'react-item' + (i === reacting.index ? ' focused' : '') + (REACTIONS[i] === mine ? ' mine' : '');
-      html += '<span class="' + cls + '">' + REACTIONS[i] + '</span>';
+    for (let i = 0; i < reacting.items.length; i++) {
+      const it = reacting.items[i];
+      const cls = 'react-item'
+        + (i === reacting.index ? ' focused' : '')
+        + (it.emoji === mine ? ' mine' : '');
+      html += '<span class="' + cls + '">' + escapeHtml(it.label) + '</span>';
     }
     reactBar.innerHTML = html;
   }
 
   function startReact() {
-    const focused = ring.currentIndex();
-    if (focused < 0 || focused >= shown.length) return;
-    const message = shown[focused];
+    const message = focusedMessage();
+    if (!message) return;
+    const items = pickerItems();
     // Start on our current reaction, if any, so Enter toggles it off.
     const mine = myReaction(message);
-    const at = mine ? REACTIONS.indexOf(mine) : -1;
-    reacting = { message: message, index: at >= 0 ? at : 0 };
+    let at = 0;
+    for (let i = 0; i < items.length; i++) if (mine && items[i].emoji === mine) at = i;
+    reacting = { message: message, items: items, index: at };
     reactErr.textContent = '';
     react.hidden = false;
     ring.setEnabled(false);
     setSoftkeys('', 'Cancel', 'Send');
     renderReactBar();
+  }
+
+  function openImage(message) {
+    const image = firstImage(message);
+    if (!image) return;
+    const conv = currentConv();
+    ctx.navigate('image', {
+      id: image.id,
+      key: key,
+      title: conv ? conv.title : 'Image',
+      // So the viewer can bring us back to this exact message.
+      timestamp: message.timestamp,
+    });
+  }
+
+  // Focus the message with this timestamp, if it is on screen.
+  function focusTimestamp(ts) {
+    for (let i = 0; i < shown.length; i++) {
+      if (shown[i].timestamp === ts) { ring.focusAt(i); return true; }
+    }
+    return false;
   }
 
   function stopReact() {
@@ -165,13 +209,15 @@ export function render(root, ctx) {
     reactErr.textContent = '';
     ring.setEnabled(true);
     setSoftkeys('Reply', 'Back', 'React');
+    updateCenterLabel();
   }
 
   function sendReact() {
     if (!reacting || reactBusy) return;
+    const item = reacting.items[reacting.index];
     const conv = currentConv();
     if (!conv) return;
-    const emoji = REACTIONS[reacting.index];
+    const emoji = item.emoji;
     // Picking the reaction we already have retracts it, as in Signal.
     const remove = myReaction(reacting.message) === emoji;
     reactBusy = true;
@@ -205,6 +251,7 @@ export function render(root, ctx) {
     ring.setEnabled(true);
     ring.focusAt(Math.max(ring.currentIndex(), 0));
     setSoftkeys('Reply', 'Back', 'React');
+    updateCenterLabel();
   }
 
   function send() {
@@ -238,7 +285,7 @@ export function render(root, ctx) {
   function onKey(e) {
     if (reacting) {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        const n = REACTIONS.length;
+        const n = reacting.items.length;
         reacting.index = (reacting.index + (e.key === 'ArrowRight' ? 1 : n - 1)) % n;
         renderReactBar();
         e.preventDefault();
@@ -259,12 +306,22 @@ export function render(root, ctx) {
     }
     if (e.key === 'SoftLeft') { startCompose(); e.preventDefault(); return; }
     if (e.key === 'SoftRight' || e.key === 'Backspace') { back(); e.preventDefault(); return; }
-    if (e.key === 'Enter') { startReact(); e.preventDefault(); }
+    if (e.key === 'Enter') {
+      const m = focusedMessage();
+      if (m && firstImage(m)) openImage(m); else startReact();
+      e.preventDefault();
+    }
   }
 
   document.addEventListener('keydown', onKey);
   renderMessages();
+  // Coming back from the viewer: land on the image, optionally with the
+  // picker open (the viewer's React key).
+  if (ctx.params && typeof ctx.params.focusTimestamp === 'number') {
+    if (focusTimestamp(ctx.params.focusTimestamp) && ctx.params.react) startReact();
+  }
   if (ctx.params && ctx.params.compose) startCompose();
+  updateCenterLabel();
 
   return {
     detach: function () {

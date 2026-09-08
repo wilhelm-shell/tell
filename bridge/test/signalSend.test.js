@@ -25,7 +25,7 @@ test('sentMessageFrame: looks like a synced outgoing message', () => {
   const f = sentMessageFrame({ text: 'hi ', peer: '+33123456789' }, ME, { timestamp: 1700000000000 });
   assert.deepEqual(f, {
     type: 'signal.message', account: ME, direction: 'out', source: ME, sourceName: null,
-    peer: '+33123456789', timestamp: 1700000000000, text: 'hi', attachments: 0, group: null,
+    peer: '+33123456789', timestamp: 1700000000000, text: 'hi', attachments: [], group: null,
   });
   const g = sentMessageFrame({ text: 'yo', group: 'abc=', groupName: 'Family' }, ME, { timestamp: 5 });
   assert.equal(g.peer, null);

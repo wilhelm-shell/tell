@@ -251,3 +251,14 @@ main#body {
 }
 .react-item.mine { border-color: #2a5a8a; }
 .react-item.focused { outline: none; border-color: #ff0; background: #26334a; }
+
+/* --- image viewer -------------------------------------------------------- */
+
+main.viewer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #000;
+}
+main.viewer img { max-width: 100%; max-height: 100%; }

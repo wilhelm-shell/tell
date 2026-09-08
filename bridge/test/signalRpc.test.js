@@ -26,7 +26,7 @@ test('envelopeToMessage: direct data message', () => {
     peer: '+33123456789',
     timestamp: 1631458508784,
     text: 'foobar',
-    attachments: 0,
+    attachments: [],
     group: null,
   });
 });
@@ -66,10 +66,10 @@ test('envelopeToMessage: subscribeReceive wrapper shape is accepted', () => {
 test('envelopeToMessage: attachment-only message has null text and a count', () => {
   const params = JSON.parse(JSON.stringify(direct));
   params.envelope.dataMessage.message = '';
-  params.envelope.dataMessage.attachments = [{ contentType: 'image/jpeg', id: '1' }];
+  params.envelope.dataMessage.attachments = [{ contentType: 'image/jpeg', id: 'abc.jpg', size: 5, width: 800, height: 600 }, { contentType: 'x' }];
   const m = envelopeToMessage(params);
   assert.equal(m.text, null);
-  assert.equal(m.attachments, 1);
+  assert.deepEqual(m.attachments, [{ id: 'abc.jpg', contentType: 'image/jpeg', filename: null, size: 5, width: 800, height: 600 }]);
 });
 
 test('envelopeToMessage: receipts, typing, reactions and garbage are ignored', () => {

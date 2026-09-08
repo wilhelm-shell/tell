@@ -1,6 +1,7 @@
 import { render as renderConversations } from './screens/conversations.js';
 import { render as renderConversation } from './screens/conversation.js';
 import { render as renderNewMessage } from './screens/newMessage.js';
+import { render as renderImage } from './screens/image.js';
 import { render as renderSettings } from './screens/settings.js';
 import { getBridgeConfig } from './config.js';
 
@@ -8,6 +9,7 @@ const screens = {
   conversations: renderConversations,
   conversation: renderConversation,
   newMessage: renderNewMessage,
+  image: renderImage,
   settings: renderSettings,
 };
 const root = document.getElementById('app');

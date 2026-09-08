@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import { checkBearer, safeEqualString } from './auth.js';
+import { registerAttachments } from './attachments.js';
 
 const WS_AUTH_TIMEOUT_MS = 5000;
 
@@ -11,6 +12,7 @@ export async function buildServer({
   signal = null,
   backlog = null,
   handlers = {},
+  attachments = null,
   logger = true,
 } = {}) {
   const app = Fastify({ logger });
@@ -35,6 +37,10 @@ export async function buildServer({
   });
 
   app.get('/hello', async () => ({ ok: true, service: 'tell-bridge' }));
+
+  // Scaled images from signal-cli's attachment store (bearer auth via the
+  // hook above). Optional so tests without a data dir need not care.
+  if (attachments) registerAttachments(app, attachments);
 
   const authedSockets = new Set();
 

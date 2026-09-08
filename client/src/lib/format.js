@@ -1,14 +1,48 @@
 // Text helpers for the 240px-wide screen. Pure functions, unit-tested
 // off-device.
 
+// Attachments arrive as an array of metadata; frames persisted before
+// that change carry a plain count, so both are tolerated.
+export function attachmentList(msg) {
+  return Array.isArray(msg.attachments) ? msg.attachments : [];
+}
+
+export function attachmentCount(msg) {
+  return Array.isArray(msg.attachments) ? msg.attachments.length : (msg.attachments || 0);
+}
+
+// The first attachment the viewer can show, or null.
+export function firstImage(msg) {
+  const list = attachmentList(msg);
+  for (let i = 0; i < list.length; i++) {
+    const ct = list[i].contentType || '';
+    if (ct.indexOf('image/') === 0) return list[i];
+  }
+  return null;
+}
+
+// "(image)", "(2 images)", "(video)", "(file)", "(3 attachments)".
+export function attachmentLabel(msg) {
+  const n = attachmentCount(msg);
+  if (n === 0) return '';
+  const list = attachmentList(msg);
+  let kind = 'attachment';
+  if (list.length === n) {
+    const kinds = {};
+    for (let i = 0; i < list.length; i++) {
+      const ct = list[i].contentType || '';
+      kinds[ct.indexOf('image/') === 0 ? 'image' : ct.indexOf('video/') === 0 ? 'video' : 'file'] = true;
+    }
+    const names = Object.keys(kinds);
+    if (names.length === 1) kind = names[0];
+  }
+  return '(' + (n === 1 ? kind : n + ' ' + kind + 's') + ')';
+}
+
 // The readable part of a message: its text, or a placeholder for
 // attachment-only messages. Newlines collapsed: these are summaries.
 export function messageBody(msg) {
-  let body = msg.text;
-  if (!body) {
-    const n = msg.attachments || 0;
-    body = '(' + n + ' attachment' + (n === 1 ? '' : 's') + ')';
-  }
+  const body = msg.text || attachmentLabel(msg) || '';
   return body.replace(/\s+/g, ' ');
 }
 

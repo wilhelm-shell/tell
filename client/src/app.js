@@ -3,6 +3,7 @@
 // they never own the socket. Without this, navigating to settings and
 // back would drop the connection and every message received so far.
 import { connect, toWsUrl } from './lib/ws.js';
+import { request as httpRequest } from './lib/http.js';
 import { getBridgeConfig, DEFAULTS } from './config.js';
 import { createStore, parseKey } from './lib/store.js';
 import { loadLastRead, saveLastRead } from './lib/readState.js';
@@ -185,6 +186,20 @@ export function sendReaction(conv, message, emoji, remove) {
   if (target.group) fields.group = target.group;
   else fields.peer = target.peer;
   return request('signal.react', fields);
+}
+
+// A screen-sized copy of an attachment, as a Blob. Goes over plain HTTP
+// with the bearer header (not the WebSocket) because binary frames on
+// this platform are the less-trodden path.
+export function fetchAttachment(id, w, h) {
+  const cfg = getBridgeConfig();
+  if (!cfg) return Promise.reject(new Error('no bridge config'));
+  return httpRequest({
+    url: cfg.url + '/attachments/' + encodeURIComponent(id) + '?w=' + (w || 240) + '&h=' + (h || 320),
+    token: cfg.token,
+    responseType: 'blob',
+    timeoutMs: 30000,
+  }).then(function (res) { return res.body; });
 }
 
 // Recipient directory for the picker: [{ kind, id, name }], sorted.

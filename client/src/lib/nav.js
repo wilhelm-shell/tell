@@ -9,7 +9,10 @@ export function nextIndex(current, total, direction) {
 
 // DOM wrapper: manages focus among [data-focusable] descendants of `container`.
 // Softkeys are handled by whoever owns the screen — this only does Up/Down.
-export function attachFocusRing(container) {
+// opts.onFocus(index) fires after every focus move, so a screen can adapt
+// its softkey labels to the focused item.
+export function attachFocusRing(container, opts) {
+  const onFocus = opts && typeof opts.onFocus === 'function' ? opts.onFocus : null;
   function items() {
     return Array.prototype.slice.call(container.querySelectorAll('[data-focusable]'));
   }
@@ -34,6 +37,7 @@ export function attachFocusRing(container) {
     // List rows are not focusable elements, so focus() alone does not
     // scroll them into view. Verify on device.
     if (typeof all[target].scrollIntoView === 'function') all[target].scrollIntoView(false);
+    if (onFocus) onFocus(target);
   }
 
   // A screen disables the ring while a text input owns Up/Down (T9 editing).

@@ -5,6 +5,7 @@ import { SignalRpcClient } from './signalRpc.js';
 import { createBacklog } from './backlog.js';
 import { fileStore } from './backlogFile.js';
 import { join } from 'node:path';
+import { homedir } from 'node:os';
 import { buildSendParams, sentMessageFrame, buildReactionParams, reactionFrame } from './signalSend.js';
 import { mapDirectory } from './signalContacts.js';
 
@@ -63,12 +64,17 @@ const handlers = {
   },
 };
 
+// signal-cli downloads attachments under its data dir; bare bridges use
+// its default location. Scaled copies go next to the backlog.
+const signalDataDir = config.signal.dataDir || join(homedir(), '.local', 'share', 'signal-cli');
+
 const app = await buildServer({
   token: config.token,
   allowedOrigins: config.allowedOrigins,
   signal,
   backlog,
   handlers,
+  attachments: { dir: join(signalDataDir, 'attachments'), cacheDir: join(config.dataDir, 'thumbs') },
 });
 
 // The RPC socket only makes sense while the daemon is up, so it follows
