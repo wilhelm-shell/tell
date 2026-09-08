@@ -6,6 +6,7 @@ import { createBacklog } from './backlog.js';
 import { fileStore } from './backlogFile.js';
 import { join } from 'node:path';
 import { buildSendParams, sentMessageFrame } from './signalSend.js';
+import { mapDirectory } from './signalContacts.js';
 
 const signal = new SignalManager({
   enabled: config.signal.enabled,
@@ -39,6 +40,16 @@ const handlers = {
     backlog.push(frame);
     app.broadcast(frame);
     return { timestamp: frame.timestamp };
+  },
+  // Recipient directory for the "new message" picker. Fetched on demand,
+  // not cached: ~100 entries, and the address book changes rarely.
+  'signal.contacts': async () => {
+    if (!account) throw new Error('no signal account linked');
+    const [contacts, groups] = await Promise.all([
+      rpc.call('listContacts', { account }),
+      rpc.call('listGroups', { account }),
+    ]);
+    return { entries: mapDirectory(contacts, groups) };
   },
 };
 

@@ -162,8 +162,16 @@ export function request(type, fields) {
   });
 }
 
-// Reply into a conversation from the store. The bridge broadcasts the
-// resulting signal.message itself, so nothing is added to the store here.
+// Recipient directory for the picker: [{ kind, id, name }], sorted.
+export function loadContacts() {
+  return request('signal.contacts', {}).then(function (res) {
+    return res && Array.isArray(res.entries) ? res.entries : [];
+  });
+}
+
+// Send into a conversation ({ key, title }); it need not exist in the
+// store yet. The bridge broadcasts the resulting signal.message itself,
+// which is what creates the conversation, so nothing is added here.
 export function sendMessage(conv, text) {
   const target = parseKey(conv.key);
   const fields = { text: text };

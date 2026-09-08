@@ -4,6 +4,8 @@ import * as app from '../app.js';
 
 // Never put more rows in the DOM than this; the screen shows ~6 at once.
 const MAX_ROWS = 30;
+// data-key of the fixed first row that opens the recipient picker.
+const NEW_KEY = '__new__';
 
 function statusWord(s) {
   switch (s.conn) {
@@ -71,18 +73,19 @@ export function render(root, ctx) {
   function renderList() {
     const rows = app.store.list(MAX_ROWS);
     renderStatus(app.getState());   // the title bar carries the unread total
-    if (rows.length === 0) {
-      list.innerHTML = '<li class="empty">No conversations yet. Incoming messages appear here.</li>';
-      return;
-    }
     // Remember which row is focused, then rebuild. The newest conversation
     // moves to the top, so the index may point at a different row after
     // a burst; acceptable for a list this short.
     let focused = ring.currentIndex();
-    let html = '';
+    // Row 0 is always "new message", so a conversation at index i in the
+    // store sits at DOM index i + 1.
+    let html = '<li class="row row-new" data-focusable data-key="' + NEW_KEY + '">+ New message</li>';
+    if (rows.length === 0) {
+      html += '<li class="empty">No conversations yet. Incoming messages appear here.</li>';
+    }
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
-      if (pendingFocusKey && r.key === pendingFocusKey) { focused = i; pendingFocusKey = null; }
+      if (pendingFocusKey && r.key === pendingFocusKey) { focused = i + 1; pendingFocusKey = null; }
       html +=
         '<li class="row' + (r.unread > 0 ? ' unread' : '') + '" data-focusable data-key="' + escapeHtml(r.key) + '">' +
           '<div class="row-top">' +
@@ -107,7 +110,8 @@ export function render(root, ctx) {
       } else {
         const row = list.querySelector('.focused');
         const key = row ? row.getAttribute('data-key') : null;
-        if (key) ctx.navigate('conversation', { key: key });
+        if (key === NEW_KEY) ctx.navigate('newMessage');
+        else if (key) ctx.navigate('conversation', { key: key });
       }
       e.preventDefault();
       return;

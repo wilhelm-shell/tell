@@ -41,13 +41,25 @@ export function render(root, ctx) {
   let composing = false;
   let sending = false;
 
-  function currentConv() { return app.store.get(key); }
+  // A conversation opened from the picker has no messages yet; the title
+  // comes from the picker until the first send creates it in the store.
+  const paramTitle = ctx.params && ctx.params.title ? ctx.params.title : null;
+
+  function currentConv() {
+    return app.store.get(key) || (paramTitle ? { key: key, title: paramTitle, messages: [] } : null);
+  }
 
   function renderMessages() {
     const conv = currentConv();
     if (!conv) {
       title.textContent = 'tell';
       msgs.innerHTML = '<li class="empty">This conversation is no longer in memory.</li>';
+      shownCount = 0;
+      return;
+    }
+    if (conv.messages.length === 0) {
+      title.textContent = conv.title;
+      msgs.innerHTML = '<li class="empty">No messages yet. Press Reply to write the first one.</li>';
       shownCount = 0;
       return;
     }
@@ -153,6 +165,7 @@ export function render(root, ctx) {
 
   document.addEventListener('keydown', onKey);
   renderMessages();
+  if (ctx.params && ctx.params.compose) startCompose();
 
   return {
     detach: function () {

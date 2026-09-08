@@ -200,3 +200,30 @@ main#body {
   outline: 2px solid #ff0;
   border-color: #ff0;
 }
+
+/* --- new message picker -------------------------------------------------- */
+
+.row-new { color: #3aa0e6; }
+.row-new.focused { color: #fff; }
+.picker { padding: 6px 6px 2px; }
+.picker input {
+  width: 100%;
+  padding: 4px;
+  border: 1px solid #444;
+  background: #111;
+  color: #eee;
+  font-size: 14px;
+  font-family: sans-serif;
+}
+.picker input.focused,
+.picker input:focus { outline: 2px solid #ff0; border-color: #ff0; }
+.dir-tag {
+  color: #aaa;
+  font-size: 12px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.row-more { color: #3aa0e6; white-space: normal; }
+.row-more.focused { color: #fff; }
