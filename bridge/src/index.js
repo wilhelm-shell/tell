@@ -5,7 +5,7 @@ import { SignalRpcClient } from './signalRpc.js';
 import { createBacklog } from './backlog.js';
 import { fileStore } from './backlogFile.js';
 import { join } from 'node:path';
-import { buildSendParams, sentMessageFrame } from './signalSend.js';
+import { buildSendParams, sentMessageFrame, buildReactionParams, reactionFrame } from './signalSend.js';
 import { mapDirectory } from './signalContacts.js';
 
 const signal = new SignalManager({
@@ -40,6 +40,16 @@ const handlers = {
     backlog.push(frame);
     app.broadcast(frame);
     return { timestamp: frame.timestamp };
+  },
+  'signal.react': async (req) => {
+    const params = buildReactionParams(req, account);
+    await rpc.call('sendReaction', params);
+    // signal-cli does not echo our own reaction back on this socket, so
+    // synthesise the frame every client (and the backlog) should see.
+    const frame = reactionFrame(req, account);
+    backlog.push(frame);
+    app.broadcast(frame);
+    return { ok: true };
   },
   // Recipient directory for the "new message" picker. Fetched on demand,
   // not cached: ~100 entries, and the address book changes rarely.

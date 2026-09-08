@@ -6,6 +6,10 @@ import * as app from '../app.js';
 // 200 anyway, and the screen shows a handful of messages at once.
 const MAX_MESSAGES = 50;
 
+// Signal's default quick reactions. Whether the phone's font draws them
+// is verify-on-device; the store treats the emoji as an opaque string.
+const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+
 export function render(root, ctx) {
   const key = ctx.params && ctx.params.key;
 
@@ -20,9 +24,14 @@ export function render(root, ctx) {
       '<input id="reply" type="text" maxlength="2000">' +
       '<p id="compose-err" class="compose-err"></p>' +
     '</div>' +
+    // Reaction picker: one row of emoji, Left/Right to choose, Enter sends.
+    '<div id="react" class="react" hidden>' +
+      '<div id="react-bar" class="react-bar"></div>' +
+      '<p id="react-err" class="compose-err"></p>' +
+    '</div>' +
     '<footer class="softkeys">' +
       '<span class="sk-left" id="sk-left">Reply</span>' +
-      '<span class="sk-center"></span>' +
+      '<span class="sk-center" id="sk-center">React</span>' +
       '<span class="sk-right" id="sk-right">Back</span>' +
     '</footer>';
 
@@ -31,15 +40,22 @@ export function render(root, ctx) {
   const compose = root.querySelector('#compose');
   const input = root.querySelector('#reply');
   const composeErr = root.querySelector('#compose-err');
+  const react = root.querySelector('#react');
+  const reactBar = root.querySelector('#react-bar');
+  const reactErr = root.querySelector('#react-err');
   const skLeft = root.querySelector('#sk-left');
+  const skCenter = root.querySelector('#sk-center');
   const skRight = root.querySelector('#sk-right');
 
   // Messages are the focus stops: Up/Down walks them, and nav.js scrolls
   // the focused one into view. That is how a D-pad scrolls a long list.
   const ring = attachFocusRing(msgs);
   let shownCount = -1;
+  let shown = [];          // messages currently rendered, index = focus index
   let composing = false;
   let sending = false;
+  let reacting = null;     // { message, index } while the picker is open
+  let reactBusy = false;
 
   // A conversation opened from the picker has no messages yet; the title
   // comes from the picker until the first send creates it in the store.
@@ -64,7 +80,7 @@ export function render(root, ctx) {
       return;
     }
     title.textContent = conv.title;
-    const shown = conv.messages.slice(-MAX_MESSAGES);
+    shown = conv.messages.slice(-MAX_MESSAGES);
 
     // First render, or the focus was on the newest message: stay at the
     // bottom so new arrivals are seen. Otherwise keep the reading position.
@@ -103,9 +119,70 @@ export function render(root, ctx) {
     app.store.markRead(key);
   }
 
-  function setSoftkeys(left, right) {
+  function setSoftkeys(left, right, center) {
     skLeft.textContent = left;
     skRight.textContent = right;
+    skCenter.textContent = center == null ? '' : center;
+  }
+
+  // --- reactions ------------------------------------------------------------
+
+  function myReaction(message) {
+    const list = message.reactions || [];
+    for (let i = 0; i < list.length; i++) if (list[i].byName === 'me') return list[i].emoji;
+    return null;
+  }
+
+  function renderReactBar() {
+    const mine = reacting ? myReaction(reacting.message) : null;
+    let html = '';
+    for (let i = 0; i < REACTIONS.length; i++) {
+      const cls = 'react-item' + (i === reacting.index ? ' focused' : '') + (REACTIONS[i] === mine ? ' mine' : '');
+      html += '<span class="' + cls + '">' + REACTIONS[i] + '</span>';
+    }
+    reactBar.innerHTML = html;
+  }
+
+  function startReact() {
+    const focused = ring.currentIndex();
+    if (focused < 0 || focused >= shown.length) return;
+    const message = shown[focused];
+    // Start on our current reaction, if any, so Enter toggles it off.
+    const mine = myReaction(message);
+    const at = mine ? REACTIONS.indexOf(mine) : -1;
+    reacting = { message: message, index: at >= 0 ? at : 0 };
+    reactErr.textContent = '';
+    react.hidden = false;
+    ring.setEnabled(false);
+    setSoftkeys('', 'Cancel', 'Send');
+    renderReactBar();
+  }
+
+  function stopReact() {
+    reacting = null;
+    reactBusy = false;
+    react.hidden = true;
+    reactErr.textContent = '';
+    ring.setEnabled(true);
+    setSoftkeys('Reply', 'Back', 'React');
+  }
+
+  function sendReact() {
+    if (!reacting || reactBusy) return;
+    const conv = currentConv();
+    if (!conv) return;
+    const emoji = REACTIONS[reacting.index];
+    // Picking the reaction we already have retracts it, as in Signal.
+    const remove = myReaction(reacting.message) === emoji;
+    reactBusy = true;
+    setSoftkeys('', 'Cancel', 'Sending…');
+    app.sendReaction(conv, reacting.message, emoji, remove).then(function () {
+      stopReact();
+    }, function (err) {
+      reactBusy = false;
+      reactErr.textContent = 'Not sent: ' + err.message;
+      setSoftkeys('', 'Cancel', 'Send');
+    });
   }
 
   function startCompose() {
@@ -113,7 +190,7 @@ export function render(root, ctx) {
     composeErr.textContent = '';
     compose.hidden = false;
     ring.setEnabled(false);
-    setSoftkeys('Send', 'Cancel');
+    setSoftkeys('Send', 'Cancel', '');
     input.focus();
   }
 
@@ -127,7 +204,7 @@ export function render(root, ctx) {
     input.blur();
     ring.setEnabled(true);
     ring.focusAt(Math.max(ring.currentIndex(), 0));
-    setSoftkeys('Reply', 'Back');
+    setSoftkeys('Reply', 'Back', 'React');
   }
 
   function send() {
@@ -139,7 +216,7 @@ export function render(root, ctx) {
     sending = true;
     input.disabled = true;
     composeErr.textContent = '';
-    setSoftkeys('Sending…', 'Cancel');
+    setSoftkeys('Sending…', 'Cancel', '');
     app.sendMessage(conv, text).then(function () {
       stopCompose();
     }, function (err) {
@@ -147,7 +224,7 @@ export function render(root, ctx) {
       sending = false;
       input.disabled = false;
       composeErr.textContent = 'Not sent: ' + err.message;
-      setSoftkeys('Send', 'Cancel');
+      setSoftkeys('Send', 'Cancel', '');
       input.focus();
     });
   }
@@ -159,6 +236,19 @@ export function render(root, ctx) {
   }
 
   function onKey(e) {
+    if (reacting) {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const n = REACTIONS.length;
+        reacting.index = (reacting.index + (e.key === 'ArrowRight' ? 1 : n - 1)) % n;
+        renderReactBar();
+        e.preventDefault();
+        return;
+      }
+      if (e.key === 'Enter') { sendReact(); e.preventDefault(); return; }
+      if (e.key === 'SoftRight' || e.key === 'Backspace') { stopReact(); e.preventDefault(); return; }
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); }
+      return;
+    }
     if (composing) {
       if (e.key === 'Enter' || e.key === 'SoftLeft') { send(); e.preventDefault(); return; }
       if (e.key === 'SoftRight') { stopCompose(); e.preventDefault(); return; }
@@ -169,7 +259,7 @@ export function render(root, ctx) {
     }
     if (e.key === 'SoftLeft') { startCompose(); e.preventDefault(); return; }
     if (e.key === 'SoftRight' || e.key === 'Backspace') { back(); e.preventDefault(); return; }
-    if (e.key === 'Enter') { e.preventDefault(); }
+    if (e.key === 'Enter') { startReact(); e.preventDefault(); }
   }
 
   document.addEventListener('keydown', onKey);

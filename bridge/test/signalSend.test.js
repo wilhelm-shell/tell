@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSendParams, sentMessageFrame } from '../src/signalSend.js';
+import { buildSendParams, sentMessageFrame, buildReactionParams, reactionFrame } from '../src/signalSend.js';
 
 const ME = '+41000000000';
 
@@ -30,4 +30,31 @@ test('sentMessageFrame: looks like a synced outgoing message', () => {
   const g = sentMessageFrame({ text: 'yo', group: 'abc=', groupName: 'Family' }, ME, { timestamp: 5 });
   assert.equal(g.peer, null);
   assert.deepEqual(g.group, { id: 'abc=', name: 'Family' });
+});
+
+test('buildReactionParams: direct and group targets, removal flag', () => {
+  assert.deepEqual(buildReactionParams({ emoji: '👍', targetAuthor: '+1', targetTimestamp: 5, peer: '+1' }, ME),
+    { account: ME, emoji: '👍', targetAuthor: '+1', targetTimestamp: 5, remove: false, recipient: ['+1'] });
+  assert.deepEqual(buildReactionParams({ emoji: ' ❤️ ', remove: true, targetAuthor: '+1', targetTimestamp: 5, group: 'g=' }, ME),
+    { account: ME, emoji: '❤️', targetAuthor: '+1', targetTimestamp: 5, remove: true, groupId: 'g=' });
+});
+
+test('buildReactionParams: rejects missing pieces', () => {
+  const ok = { emoji: '👍', targetAuthor: '+1', targetTimestamp: 5, peer: '+1' };
+  assert.throws(() => buildReactionParams(ok, null), /no signal account/);
+  assert.throws(() => buildReactionParams({ ...ok, emoji: '' }, ME), /empty reaction/);
+  assert.throws(() => buildReactionParams({ ...ok, targetAuthor: null }, ME), /no target author/);
+  assert.throws(() => buildReactionParams({ ...ok, targetTimestamp: '5' }, ME), /no target timestamp/);
+  assert.throws(() => buildReactionParams({ ...ok, peer: undefined }, ME), /no recipient/);
+});
+
+test('reactionFrame: looks like a synced outgoing reaction', () => {
+  assert.deepEqual(reactionFrame({ emoji: '👍', targetAuthor: '+1', targetTimestamp: 5, peer: '+1' }, ME), {
+    type: 'signal.reaction', account: ME, direction: 'out', source: ME, sourceName: null,
+    peer: '+1', group: null, emoji: '👍', remove: false, target: { author: '+1', timestamp: 5 },
+  });
+  const g = reactionFrame({ emoji: '👍', remove: true, targetAuthor: '+1', targetTimestamp: 5, group: 'g=', groupName: 'Fam' }, ME);
+  assert.equal(g.peer, null);
+  assert.deepEqual(g.group, { id: 'g=', name: 'Fam' });
+  assert.equal(g.remove, true);
 });

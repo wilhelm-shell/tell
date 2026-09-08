@@ -229,3 +229,25 @@ main#body {
 .row-more.focused { color: #fff; }
 
 .msg-reactions { color: #aaa; font-size: 12px; margin-top: 2px; }
+
+/* --- reaction picker ----------------------------------------------------- */
+
+.react {
+  padding: 4px 6px;
+  border-top: 1px solid #2a3a52;
+  background: #0b1220;
+}
+.react-bar {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  font-size: 20px;
+  line-height: 28px;
+}
+.react-item {
+  padding: 0 4px;
+  border: 2px solid transparent;
+  border-radius: 4px;
+}
+.react-item.mine { border-color: #2a5a8a; }
+.react-item.focused { outline: none; border-color: #ff0; background: #26334a; }

@@ -172,6 +172,21 @@ export function request(type, fields) {
   });
 }
 
+// React to a message in a conversation. `remove` retracts our reaction.
+// As with sends, the bridge broadcasts the resulting signal.reaction.
+export function sendReaction(conv, message, emoji, remove) {
+  const target = parseKey(conv.key);
+  const fields = {
+    emoji: emoji,
+    remove: !!remove,
+    targetAuthor: message.source,
+    targetTimestamp: message.timestamp,
+  };
+  if (target.group) fields.group = target.group;
+  else fields.peer = target.peer;
+  return request('signal.react', fields);
+}
+
 // Recipient directory for the picker: [{ kind, id, name }], sorted.
 export function loadContacts() {
   return request('signal.contacts', {}).then(function (res) {
