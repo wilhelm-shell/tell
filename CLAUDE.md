@@ -165,7 +165,7 @@ newer exists. Modern syntax that parses fine in Node will throw a
   parsing). Client gets logic-level tests only (nav model, formatting);
   no headless-browser UI tests — the phone is the test.
 
-## State (2026-09-08, after slice m.2)
+## State (2026-09-09, after slice m.3)
 
 Slices landed on `main`:
 - **a** — bridge `/hello` + bearer auth.
@@ -236,18 +236,24 @@ Slices landed on `main`:
 - **m.2** — reactions sent. Centre key = React: six-emoji picker,
   Left/Right, Enter sends via `signal.react` → `sendReaction`; picking
   the current one retracts. Bridge synthesises the outgoing frame.
+- **m.3** — images received. `GET /attachments/:id?w=&h=` (bearer auth)
+  returns a JPEG fitted to the request (max 480 px, EXIF rotation),
+  from signal-cli's attachment dir, cached in `/data/thumbs` under a
+  50 MB oldest-first cap (`bridge/src/attachments.js`). **sharp is the
+  bridge's one native dependency.** Frames carry `attachments` as an
+  array of metadata (old backlog files: a count; client tolerates
+  both). Client: blob XHR, `screens/image.js` viewer; centre key =
+  Open on an image message, React otherwise (label follows focus via
+  `nav.js` `onFocus`); viewer's centre key = React back on that message.
 
 WS protocol so far (all JSON, one object per frame): client→bridge
 `auth` first, then requests `{type, id, ...}` (`signal.send`,
 `signal.react`, `signal.contacts`); bridge→client `hello`,
 `signal.status`, `signal.backlog` (once, after auth), `signal.message`
-and `signal.reaction` (live), `reply` (to a request).
+and `signal.reaction` (live), `reply` (to a request). REST: `/hello`,
+`/attachments/:id`.
 
 Next planned slices, in rough order:
-- **m.3** — images received: authenticated `GET /attachments/:id`
-  serving a screen-sized version (sharp on the bridge, cached in
-  `/data`, size-capped); `(image)` placeholder + Enter opens a viewer.
-  Full-size photos must never reach the phone (12 MP ≈ 48 MB bitmap).
 - **m.4** — video / animated GIF (Signal "GIFs" are MP4): poster frame
   first, test raw playback on device before deciding on transcoding.
 - **l** — deploy the Compose stack to the Linux server behind the
