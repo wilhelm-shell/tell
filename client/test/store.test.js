@@ -171,3 +171,45 @@ test('persisted read marks are capped, oldest dropped', () => {
   assert.equal(last['p:+1'], undefined);
   assert.equal(last['p:+101'], 101);
 });
+
+// --- reactions --------------------------------------------------------------
+
+function reaction(over) {
+  return Object.assign({
+    type: 'signal.reaction', direction: 'in', source: '+2', sourceName: 'Bob', peer: '+2', group: null,
+    emoji: '👍', remove: false, target: { author: '+41000000000', timestamp: 500 },
+  }, over || {});
+}
+
+test('applyReaction attaches to the target by author + timestamp; replaces per reactor; removes', () => {
+  const s = createStore({ cap: 100 });
+  s.add(outgoing('+2', 'hello', { timestamp: 500 }));
+  s.add(incoming('+2', 'other', { timestamp: 600 }));
+  let n = 0;
+  s.subscribe(() => { n++; });
+
+  assert.equal(s.applyReaction(reaction()), true);
+  assert.deepEqual(s.get('p:+2').messages[0].reactions, [{ emoji: '👍', by: '+2', byName: 'Bob' }]);
+  assert.equal(s.get('p:+2').messages[1].reactions, undefined);
+
+  s.applyReaction(reaction({ emoji: '❤️' }));
+  assert.deepEqual(s.get('p:+2').messages[0].reactions.map((r) => r.emoji), ['❤️'], 'one per reactor');
+
+  s.applyReaction(reaction({ direction: 'out', source: '+41000000000', sourceName: null, emoji: '😂' }));
+  assert.deepEqual(s.get('p:+2').messages[0].reactions.map((r) => r.byName), ['Bob', 'me']);
+
+  s.applyReaction(reaction({ remove: true }));
+  assert.deepEqual(s.get('p:+2').messages[0].reactions.map((r) => r.byName), ['me']);
+  assert.equal(n, 4);
+});
+
+test('applyReaction is idempotent and drops unknown targets', () => {
+  const s = createStore({ cap: 100 });
+  s.add(outgoing('+2', 'hello', { timestamp: 500 }));
+  s.applyReaction(reaction());
+  s.applyReaction(reaction());
+  assert.equal(s.get('p:+2').messages[0].reactions.length, 1);
+  assert.equal(s.applyReaction(reaction({ target: { author: '+41000000000', timestamp: 999 } })), false);
+  assert.equal(s.applyReaction(reaction({ peer: '+404' })), false);
+  assert.equal(s.list()[0].key, 'p:+2', 'a reaction does not reorder or create conversations');
+});

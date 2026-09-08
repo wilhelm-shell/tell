@@ -78,10 +78,19 @@ export function render(root, ctx) {
       // Keep line breaks in the full view (CSS pre-wrap); only attachment
       // placeholders come from messageBody.
       const body = m.text ? m.text : messageBody(m);
+      let reactions = '';
+      if (m.reactions && m.reactions.length > 0) {
+        const parts = [];
+        for (let j = 0; j < m.reactions.length; j++) {
+          parts.push(escapeHtml(m.reactions[j].emoji + ' ' + m.reactions[j].byName));
+        }
+        reactions = '<div class="msg-reactions">' + parts.join(' · ') + '</div>';
+      }
       html +=
         '<li class="msg' + (m.direction === 'out' ? ' msg-out' : '') + '" data-focusable>' +
           '<div class="msg-head">' + escapeHtml(who) + ' · ' + escapeHtml(formatTime(m.timestamp)) + '</div>' +
           '<div class="msg-text">' + escapeHtml(body) + '</div>' +
+          reactions +
         '</li>';
     }
     msgs.innerHTML = html;

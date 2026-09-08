@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
-import { SignalRpcClient, envelopeToMessage } from '../src/signalRpc.js';
+import { SignalRpcClient, envelopeToMessage, envelopeToReaction } from '../src/signalRpc.js';
 
 // Shapes taken from the signal-cli 0.14.7 man page (signal-cli-jsonrpc.5)
 // and its published JSON schemas.
@@ -218,6 +218,74 @@ test('call(): times out, rejects when not connected, rejects pending on disconne
     const hanging = client.call('send', {});
     conn.destroy();
     await assert.rejects(hanging, /disconnected/);
+  } finally {
+    client.stop();
+    await d.close();
+  }
+});
+
+// --- reactions --------------------------------------------------------------
+
+test('envelopeToReaction: incoming reaction on our message', () => {
+  const params = {
+    envelope: {
+      source: '+33123456789', sourceNumber: '+33123456789', sourceName: 'name', timestamp: 2000,
+      dataMessage: {
+        timestamp: 2000, message: null, attachments: [],
+        reaction: { emoji: '👍', isRemove: false, targetAuthor: '+41000000000', targetAuthorNumber: '+41000000000', targetSentTimestamp: 1000 },
+      },
+    },
+    account: '+41000000000',
+  };
+  assert.equal(envelopeToMessage(params), null, 'a reaction is not a message');
+  assert.deepEqual(envelopeToReaction(params), {
+    account: '+41000000000', direction: 'in', source: '+33123456789', sourceName: 'name',
+    peer: '+33123456789', group: null, emoji: '👍', remove: false,
+    target: { author: '+41000000000', timestamp: 1000 },
+  });
+});
+
+test('envelopeToReaction: our own reaction synced from another device, in a group, removal', () => {
+  const params = {
+    envelope: {
+      source: '+41000000000', sourceNumber: '+41000000000', timestamp: 3000,
+      syncMessage: { sentMessage: {
+        destination: null, timestamp: 3000, message: null,
+        groupInfo: { groupId: 'g1=', groupName: 'Family' },
+        reaction: { emoji: '❤️', isRemove: true, targetAuthorNumber: '+33123456789', targetSentTimestamp: 1500 },
+      } },
+    },
+    account: '+41000000000',
+  };
+  const r = envelopeToReaction(params);
+  assert.equal(r.direction, 'out');
+  assert.equal(r.peer, null);
+  assert.deepEqual(r.group, { id: 'g1=', name: 'Family' });
+  assert.equal(r.remove, true);
+  assert.deepEqual(r.target, { author: '+33123456789', timestamp: 1500 });
+});
+
+test('envelopeToReaction: plain messages and junk yield null', () => {
+  assert.equal(envelopeToReaction(direct), null);
+  assert.equal(envelopeToReaction({ envelope: { dataMessage: { reaction: { emoji: 'x' } } } }), null, 'no target timestamp');
+  assert.equal(envelopeToReaction(null), null);
+});
+
+test('client: reaction notifications are emitted as reaction events', async () => {
+  const d = await fakeDaemon();
+  const client = new SignalRpcClient({ host: '127.0.0.1', port: d.port });
+  try {
+    const got = [];
+    client.on('reaction', (r) => got.push(r));
+    client.start();
+    await once(client, 'connected');
+    const conn = await d.waitConn(1);
+    conn.write(notification({
+      envelope: { sourceNumber: '+1', timestamp: 5, dataMessage: { timestamp: 5, attachments: [], reaction: { emoji: '👍', isRemove: false, targetAuthorNumber: '+2', targetSentTimestamp: 4 } } },
+    }));
+    await sleep(50);
+    assert.equal(got.length, 1);
+    assert.equal(got[0].emoji, '👍');
   } finally {
     client.stop();
     await d.close();

@@ -64,10 +64,20 @@ function onServerEvent(msg) {
     set({ signal: msg.status + (msg.message ? ' (' + msg.message + ')' : '') });
   } else if (msg.type === 'signal.message') {
     store.add(msg);
+  } else if (msg.type === 'signal.reaction') {
+    store.applyReaction(msg);
   } else if (msg.type === 'signal.backlog' && Array.isArray(msg.messages)) {
     // History replayed by the bridge right after auth; the store drops
     // anything it already has (reconnects replay the same backlog).
-    store.addMany(msg.messages);
+    // Messages first, then reactions, so every target already exists.
+    const messages = [];
+    const reactions = [];
+    for (let i = 0; i < msg.messages.length; i++) {
+      const f = msg.messages[i];
+      if (f && f.type === 'signal.reaction') reactions.push(f); else messages.push(f);
+    }
+    store.addMany(messages);
+    for (let i = 0; i < reactions.length; i++) store.applyReaction(reactions[i]);
   } else if (msg.type === 'reply') {
     settle(msg.id, msg.ok ? null : new Error(msg.error || 'bridge error'), msg.result);
   }

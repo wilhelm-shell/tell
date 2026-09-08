@@ -65,6 +65,53 @@ export function envelopeToMessage(params) {
   };
 }
 
+// A reaction rides in a dataMessage (someone reacting to us) or in a sync
+// sentMessage (we reacted from another device). Signal identifies the
+// target message by author + sent timestamp, so that is what we forward.
+// Returns null when the envelope carries no reaction.
+export function envelopeToReaction(params) {
+  if (!params || typeof params !== 'object') return null;
+  const body = params.envelope
+    ? params
+    : (params.result && params.result.envelope ? params.result : null);
+  if (!body) return null;
+  const env = body.envelope;
+
+  let data;
+  let direction;
+  let peer;
+  if (env.dataMessage && env.dataMessage.reaction) {
+    data = env.dataMessage;
+    direction = 'in';
+    peer = env.sourceNumber || env.source || env.sourceUuid || null;
+  } else if (env.syncMessage && env.syncMessage.sentMessage && env.syncMessage.sentMessage.reaction) {
+    data = env.syncMessage.sentMessage;
+    direction = 'out';
+    peer = data.destinationNumber || data.destination || data.destinationUuid || null;
+  } else {
+    return null;
+  }
+  const r = data.reaction;
+  if (!r || typeof r.targetSentTimestamp !== 'number') return null;
+  const group = data.groupInfo
+    ? { id: data.groupInfo.groupId || null, name: data.groupInfo.groupName || null }
+    : null;
+  return {
+    account: body.account || null,
+    direction,
+    source: env.sourceNumber || env.source || null,
+    sourceName: env.sourceName || null,
+    peer: group ? null : peer,
+    group,
+    emoji: typeof r.emoji === 'string' ? r.emoji : '',
+    remove: r.isRemove === true,
+    target: {
+      author: r.targetAuthorNumber || r.targetAuthor || null,
+      timestamp: r.targetSentTimestamp,
+    },
+  };
+}
+
 // Persistent TCP client for the signal-cli daemon's JSON-RPC socket.
 // The wire format is one JSON object per line. Two kinds of frames come
 // back: notifications (a `method`, no `id`) that we turn into 'message'
@@ -189,7 +236,9 @@ export class SignalRpcClient extends EventEmitter {
     if (!frame || typeof frame !== 'object') return;
     if (frame.method === 'receive') {
       const msg = envelopeToMessage(frame.params);
-      if (msg) this.emit('message', msg);
+      if (msg) { this.emit('message', msg); return; }
+      const reaction = envelopeToReaction(frame.params);
+      if (reaction) this.emit('reaction', reaction);
       return;
     }
     if (frame.id != null && this._pending.has(frame.id)) {

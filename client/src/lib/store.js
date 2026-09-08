@@ -150,6 +150,32 @@ export function createStore(opts) {
     return true;
   }
 
+  // Attach a reaction to the message it targets (author + timestamp, as
+  // Signal identifies messages). One reaction per reactor per message; a
+  // repeat replaces, a removal deletes. Idempotent, so a replayed backlog
+  // lands in the same state. Dropped when the target is not in memory.
+  function applyReaction(r) {
+    const key = conversationKey(r);
+    if (!key || !r.target) return false;
+    const idx = find(key);
+    if (idx === -1) return false;
+    const msgs = convs[idx].messages;
+    let target = null;
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      const m = msgs[i].msg;
+      if (m.timestamp === r.target.timestamp && m.source === r.target.author) { target = m; break; }
+    }
+    if (!target) return false;
+    const by = r.source || '?';
+    const list = (target.reactions || []).filter(function (x) { return x.by !== by; });
+    if (!r.remove && r.emoji) {
+      list.push({ emoji: r.emoji, by: by, byName: r.direction === 'out' ? 'me' : (r.sourceName || by) });
+    }
+    target.reactions = list;
+    notify();
+    return true;
+  }
+
   // The conversation is on screen: everything in it counts as read.
   function markRead(key) {
     const idx = find(key);
@@ -227,6 +253,7 @@ export function createStore(opts) {
     list: list,
     get: get,
     markRead: markRead,
+    applyReaction: applyReaction,
     totalUnread: totalUnread,
     subscribe: subscribe,
     size: function () { return total; },

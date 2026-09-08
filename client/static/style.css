@@ -227,3 +227,5 @@ main#body {
 
 .row-more { color: #3aa0e6; white-space: normal; }
 .row-more.focused { color: #fff; }
+
+.msg-reactions { color: #aaa; font-size: 12px; margin-top: 2px; }

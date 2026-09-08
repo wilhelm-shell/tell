@@ -85,6 +85,13 @@ rpc.on('disconnected', (evt) => {
   account = null;
   app.log.info(evt, 'signal rpc disconnected');
 });
+rpc.on('reaction', (r) => {
+  app.log.info({ direction: r.direction, target: r.target.timestamp, remove: r.remove }, 'signal reaction');
+  const frame = { type: 'signal.reaction', ...r };
+  // Buffered too, so a reopen shows reactions on replayed messages.
+  backlog.push(frame);
+  app.broadcast(frame);
+});
 rpc.on('message', (m) => {
   // Deliberately no sender and no text: plaintext and contacts stay out
   // of the log stream.
