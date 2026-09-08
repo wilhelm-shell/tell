@@ -5,6 +5,7 @@ import { render as renderImage } from './screens/image.js';
 import { render as renderVideo } from './screens/video.js';
 import { render as renderSettings } from './screens/settings.js';
 import { getBridgeConfig } from './config.js';
+import { loadTheme, applyTheme } from './lib/theme.js';
 
 const screens = {
   conversations: renderConversations,
@@ -30,4 +31,5 @@ function navigate(name, params) {
   current = fn(root, { navigate: navigate, params: params || {} });
 }
 
+applyTheme(loadTheme());
 navigate(getBridgeConfig() ? 'conversations' : 'settings');
