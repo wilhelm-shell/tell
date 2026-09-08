@@ -37,16 +37,16 @@ export function render(root, ctx) {
     const token = tokenInput.value.trim();
     if (!url || !token) return;
     setBridgeConfig(url, token);
-    ctx.navigate('hello');
+    ctx.navigate('conversations');
   }
 
   function onKey(e) {
     if (e.key === 'Enter') { save(); e.preventDefault(); return; }
     if (e.key === 'SoftRight' || e.key === 'Backspace') {
-      // If a config already exists, go back to hello. Otherwise exit
+      // If a config already exists, go back to the list. Otherwise exit
       // the app so the user is never trapped on a mandatory-save screen.
       if (getBridgeConfig()) {
-        ctx.navigate('hello');
+        ctx.navigate('conversations');
       } else if (typeof window.close === 'function') {
         window.close();
       }

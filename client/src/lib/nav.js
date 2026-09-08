@@ -31,6 +31,9 @@ export function attachFocusRing(container) {
       else all[i].classList.remove('focused');
     }
     if (typeof all[target].focus === 'function') all[target].focus();
+    // List rows are not focusable elements, so focus() alone does not
+    // scroll them into view. Verify on device.
+    if (typeof all[target].scrollIntoView === 'function') all[target].scrollIntoView(false);
   }
 
   function onKey(e) {
@@ -49,5 +52,6 @@ export function attachFocusRing(container) {
   return {
     detach: function () { document.removeEventListener('keydown', onKey); },
     focusAt: focusAt,
+    currentIndex: currentIndex,
   };
 }

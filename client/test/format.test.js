@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatLastMessage } from '../src/lib/format.js';
+import { formatLastMessage, formatPreview, escapeHtml } from '../src/lib/format.js';
 
 test('incoming direct message uses the sender name', () => {
   const s = formatLastMessage({ direction: 'in', sourceName: 'Alice', source: '+33123456789', text: 'hello', attachments: 0, group: null });
@@ -31,4 +31,18 @@ test('long text is truncated with an ellipsis and newlines collapsed', () => {
   const s = formatLastMessage({ direction: 'in', sourceName: 'A', text: 'line one\nline two ' + 'x'.repeat(100), attachments: 0, group: null }, 20);
   assert.equal(s.length, 20);
   assert.equal(s, 'A: line one line tw…');
+});
+
+test('formatPreview omits the sender for incoming direct messages', () => {
+  const s = formatPreview({ direction: 'in', sourceName: 'Alice', text: 'hello', attachments: 0, group: null });
+  assert.equal(s, 'hello');
+});
+
+test('formatPreview prefixes me: and group senders', () => {
+  assert.equal(formatPreview({ direction: 'out', text: 'yo', attachments: 0, group: null }), 'me: yo');
+  assert.equal(formatPreview({ direction: 'in', sourceName: 'Bob', text: 'hi', attachments: 0, group: { id: 'g', name: 'Family' } }), 'Bob: hi');
+});
+
+test('escapeHtml neutralises markup', () => {
+  assert.equal(escapeHtml('<b>&"x"'), '&lt;b&gt;&amp;&quot;x&quot;');
 });

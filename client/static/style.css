@@ -72,3 +72,30 @@ main#body {
   outline: 2px solid #ff0;
   border-color: #ff0;
 }
+
+.muted { color: #888; }
+[hidden] { display: none; }
+
+.rows { list-style: none; }
+.row {
+  padding: 4px 6px;
+  border-bottom: 1px solid #222;
+}
+.row-title {
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row-preview {
+  color: #aaa;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row.focused {
+  outline: none;
+  background: #333;
+  border-left: 3px solid #ff0;
+}
