@@ -162,7 +162,7 @@ newer exists. Modern syntax that parses fine in Node will throw a
   parsing). Client gets logic-level tests only (nav model, formatting);
   no headless-browser UI tests — the phone is the test.
 
-## State (2026-09-08, after slice g)
+## State (2026-09-08, after slice h)
 
 Slices landed on `main`:
 - **a** — bridge `/hello` + bearer auth.
@@ -190,15 +190,20 @@ Slices landed on `main`:
   row, last 50 messages oldest→newest as focus stops, follows the tail
   only when focus is on the newest. `navigate(name, params)` carries the
   key in and the row to re-focus back. `formatTime` is hand-rolled.
+- **h** — bridge replay buffer (`bridge/src/backlog.js`): ring of the
+  last `BRIDGE_BACKLOG_CAP` (default 200, 0 disables) `signal.message`
+  frames, sent as one `signal.backlog` frame after hello + status.
+  In-memory only. Client store dedups on sender + timestamp; `addMany`
+  applies the backlog with one render.
 
 Next planned slices, in rough order:
-- **h** — bridge replay buffer: in-memory ring of the last N
-  `signal.message` frames sent right after WS auth, so the list is not
-  empty after the app was killed in the background.
-- Later: reconnect on visibilitychange, mozAlarms wake, send path
-  (JSON-RPC `send` over the same socket; responses with `id` are ignored
-  by `SignalRpcClient` today), Compose deploy to the Linux server (needs
-  its own `signal-link`).
+- **i** — send path: client composes a reply in the conversation view
+  (native T9 in a `<textarea>`), bridge issues a JSON-RPC `send` request
+  over the daemon socket and correlates the response by `id`
+  (`SignalRpcClient` ignores responses today).
+- Later: reconnect on visibilitychange, mozAlarms wake, disk persistence
+  of the backlog on the `/data` volume behind the same cap/switch,
+  Compose deploy to the Linux server (needs its own `signal-link`).
 
 ## How to work with me
 
