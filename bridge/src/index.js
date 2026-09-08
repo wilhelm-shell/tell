@@ -7,6 +7,7 @@ const signal = new SignalManager({
   bin: config.signal.bin,
   rpcHost: config.signal.rpcHost,
   rpcPort: config.signal.rpcPort,
+  dataDir: config.signal.dataDir,
 });
 
 const app = await buildServer({

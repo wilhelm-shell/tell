@@ -110,3 +110,11 @@ test('emitted event carries status field', async () => {
     await new Promise((r) => server.close(r));
   }
 });
+
+test('daemonArgs: --data-dir precedes the subcommand, absent when unset', () => {
+  const bare = new SignalManager({ enabled: true, rpcHost: '127.0.0.1', rpcPort: 7583 });
+  assert.deepEqual(bare.daemonArgs(), ['daemon', '--tcp', '127.0.0.1:7583', '--no-receive-stdout']);
+
+  const withDir = new SignalManager({ enabled: true, rpcHost: '127.0.0.1', rpcPort: 7583, dataDir: '/data/signal-cli' });
+  assert.deepEqual(withDir.daemonArgs(), ['--data-dir', '/data/signal-cli', 'daemon', '--tcp', '127.0.0.1:7583', '--no-receive-stdout']);
+});

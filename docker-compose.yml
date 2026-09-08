@@ -1,0 +1,26 @@
+# Bridge + signal-cli as one service. See CLAUDE.md "Deploy (Docker)".
+services:
+  bridge:
+    build: ./bridge
+    image: tell-bridge
+    restart: unless-stopped
+    env_file: bridge/.env
+    # `environment` overrides `env_file`: these values are dictated by the
+    # container layout, not by taste, so they are pinned here rather than
+    # left to .env.
+    environment:
+      BRIDGE_HOST: 0.0.0.0
+      BRIDGE_PORT: "8787"
+      SIGNAL_CLI_DATA_DIR: /data/signal-cli
+    # Default binds to loopback only: on the server the reverse proxy
+    # terminates TLS and forwards to 127.0.0.1:8787, nothing is reachable
+    # from the LAN. For phone testing against a dev box, put
+    # BRIDGE_BIND=0.0.0.0 in a root-level .env (gitignored); Compose reads
+    # that file for ${...} interpolation (bridge/.env is only env_file).
+    ports:
+      - "${BRIDGE_BIND:-127.0.0.1}:8787:8787"
+    volumes:
+      - bridge-data:/data
+
+volumes:
+  bridge-data:

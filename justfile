@@ -26,3 +26,20 @@ package-client:
 
 deploy-phone:
     powershell -File scripts/deploy-phone.ps1
+
+# --- Docker (bridge + signal-cli in one container) -----------------------
+
+bridge-up:
+    docker compose up -d --build
+
+bridge-down:
+    docker compose down
+
+bridge-logs:
+    docker compose logs -f bridge
+
+# One-time: link the container's signal-cli as a secondary device. Prints a
+# QR code to scan with the Signal app. Restart the bridge afterwards so the
+# daemon picks up the new account.
+signal-link:
+    docker compose run --rm --no-deps bridge signal-link

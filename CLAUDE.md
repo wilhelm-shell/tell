@@ -133,6 +133,22 @@ newer exists. Modern syntax that parses fine in Node will throw a
   - `gdeploy evaluate <app-id> "<js>"` runs JS in the installed app
     context. This is how to prefill `localStorage` (`bridge.url`,
     `bridge.token`) without typing on T9. `gdeploy list` finds the id.
+- **Deploy (Docker):** `docker-compose.yml` at the repo root runs the bridge
+  and signal-cli in ONE container (`bridge/Dockerfile`: Node 22 + Temurin
+  JRE 25 + pinned signal-cli release; the bridge spawns the daemon as a
+  child process, same as bare). Port is bound to `127.0.0.1:8787` only —
+  the host reverse proxy terminates TLS. `/data` is a named volume holding
+  signal-cli's account store (`SIGNAL_CLI_DATA_DIR`, pinned by compose).
+  On the server: clone, create `bridge/.env` (set `SIGNAL_CLI_ENABLED=true`),
+  `just bridge-up`, then once `just signal-link` (prints a QR code; scan
+  from the primary phone under Settings → Linked devices) and `docker
+  compose restart bridge` so the daemon loads the new account. `just
+  bridge-logs` tails it. The daemon runs fine with zero accounts, so
+  bringing the bridge up before linking is safe. For phone testing against
+  the Windows dev box, a root-level `.env` (gitignored) with
+  `BRIDGE_BIND=0.0.0.0` publishes the port on the LAN instead of loopback.
+  Upgrading signal-cli = bump `SIGNAL_CLI_VERSION` in the Dockerfile. Note: signal-cli's bundled native libsignal is
+  x86_64-only; arm64 hosts need a different route.
 - `just logs` (not yet wired) = adb logcat filtered to our app tag.
   Instrument with `console.log` generously behind a DEBUG flag; the
   log stream is the only visibility into the device (nobody can see

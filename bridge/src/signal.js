@@ -22,6 +22,7 @@ export class SignalManager extends EventEmitter {
     this.bin = opts.bin || 'signal-cli';
     this.rpcHost = opts.rpcHost || '127.0.0.1';
     this.rpcPort = opts.rpcPort || 7583;
+    this.dataDir = opts.dataDir || null;
     this.spawnFn = opts.spawnFn || defaultSpawn;
     this.setTimeoutFn = opts.setTimeoutFn || setTimeout;
     this._status = STATUS.DISABLED;
@@ -31,6 +32,17 @@ export class SignalManager extends EventEmitter {
   }
 
   get status() { return this._status; }
+
+  // Global options (--data-dir) come BEFORE the subcommand in signal-cli's
+  // grammar. --no-receive-stdout: the daemon would otherwise print every
+  // incoming message to stdout; we read messages over JSON-RPC instead and
+  // do not want plaintext in the container logs.
+  daemonArgs() {
+    const args = [];
+    if (this.dataDir) args.push('--data-dir', this.dataDir);
+    args.push('daemon', '--tcp', `${this.rpcHost}:${this.rpcPort}`, '--no-receive-stdout');
+    return args;
+  }
 
   _setStatus(status, message) {
     if (this._status === status) return;
@@ -51,11 +63,12 @@ export class SignalManager extends EventEmitter {
     this._setStatus(STATUS.STARTING);
     let proc;
     try {
-      proc = this.spawnFn(
-        this.bin,
-        ['daemon', '--tcp', `${this.rpcHost}:${this.rpcPort}`],
-        { stdio: ['ignore', 'pipe', 'pipe'] }
-      );
+      proc = this.spawnFn(this.bin, this.daemonArgs(), {
+        // signal-cli's own output goes straight to our stdout/stderr (and so
+        // to `docker compose logs`). Piping it without ever reading the pipe
+        // would block the JVM once the 64 KiB pipe buffer fills up.
+        stdio: ['ignore', 'inherit', 'inherit'],
+      });
     } catch (e) {
       // NOT_INSTALLED is a hard error — don't retry, the binary won't
       // appear on its own. User needs to install signal-cli.

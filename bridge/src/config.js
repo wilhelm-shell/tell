@@ -19,5 +19,6 @@ export const config = {
     bin: env.SIGNAL_CLI_BIN || 'signal-cli',
     rpcHost: env.SIGNAL_CLI_RPC_HOST || '127.0.0.1',
     rpcPort: Number(env.SIGNAL_CLI_RPC_PORT || 7583),
+    dataDir: env.SIGNAL_CLI_DATA_DIR || null,
   },
 };
