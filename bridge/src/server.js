@@ -31,13 +31,19 @@ export async function buildServer({ token, allowedOrigins = [], signal = null, l
 
   const authedSockets = new Set();
 
+  // Push one JSON frame to every authenticated client. Exposed on the app
+  // so index.js can wire event sources (signal-cli, later Telegram) without
+  // the server knowing about them.
+  function broadcast(frame) {
+    const payload = JSON.stringify(frame);
+    for (const s of authedSockets) {
+      try { s.send(payload); } catch (_) {}
+    }
+  }
+  app.decorate('broadcast', broadcast);
+
   if (signal) {
-    signal.on('status', (evt) => {
-      const payload = JSON.stringify({ type: 'signal.status', ...evt });
-      for (const s of authedSockets) {
-        try { s.send(payload); } catch (_) {}
-      }
-    });
+    signal.on('status', (evt) => broadcast({ type: 'signal.status', ...evt }));
   }
 
   app.get('/ws', { websocket: true }, (socket) => {

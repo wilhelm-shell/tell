@@ -80,3 +80,29 @@ test('ws with wrong-shape frame gets closed with 4003', async () => {
     await app.close();
   }
 });
+
+test('app.broadcast reaches authed clients only', async () => {
+  const { app, url } = await bootServer();
+  try {
+    const authed = new WebSocket(url);
+    await new Promise((r) => authed.once('open', r));
+    authed.send(JSON.stringify({ type: 'auth', token: TOKEN }));
+    await firstMessage(authed);
+
+    const stranger = new WebSocket(url);
+    await new Promise((r) => stranger.once('open', r));
+    let strangerGot = 0;
+    stranger.on('message', () => { strangerGot++; });
+
+    const next = firstMessage(authed);
+    app.broadcast({ type: 'signal.message', text: 'hi' });
+    const msg = await next;
+    assert.deepEqual(msg, { type: 'signal.message', text: 'hi' });
+    await new Promise((r) => setTimeout(r, 30));
+    assert.equal(strangerGot, 0);
+    authed.close();
+    stranger.close();
+  } finally {
+    await app.close();
+  }
+});

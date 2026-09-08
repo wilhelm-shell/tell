@@ -1,5 +1,6 @@
 import { connect, toWsUrl } from '../lib/ws.js';
 import { getBridgeConfig, DEFAULTS } from '../config.js';
+import { formatLastMessage } from '../lib/format.js';
 
 export function render(root, ctx) {
   root.innerHTML =
@@ -7,6 +8,7 @@ export function render(root, ctx) {
     '<main id="body">' +
       '<p id="status">connecting…</p>' +
       '<p id="signal">signal: —</p>' +
+      '<p id="last">last: —</p>' +
     '</main>' +
     '<footer class="softkeys">' +
       '<span class="sk-left">settings</span>' +
@@ -16,14 +18,20 @@ export function render(root, ctx) {
 
   const status = root.querySelector('#status');
   const signal = root.querySelector('#signal');
+  const last = root.querySelector('#last');
   function setStatus(text) { status.textContent = text; }
   function setSignal(text) { signal.textContent = 'signal: ' + text; }
+  function setLast(text) { last.textContent = 'last: ' + text; }
 
   let currentWs = null;
 
   function onServerEvent(msg) {
     if (msg && msg.type === 'signal.status') {
       setSignal(msg.status + (msg.message ? ' (' + msg.message + ')' : ''));
+    } else if (msg && msg.type === 'signal.message') {
+      // First pass: only the most recent message, one line. A real
+      // conversation list is a later slice.
+      setLast(formatLastMessage(msg));
     }
   }
 
@@ -36,6 +44,7 @@ export function render(root, ctx) {
     }
     setStatus('connecting…');
     setSignal('—');
+    setLast('—');
     try {
       const res = await connect({
         url: toWsUrl(cfg.url),
