@@ -180,7 +180,7 @@ newer exists. Modern syntax that parses fine in Node will throw a
   parsing). Client gets logic-level tests only (nav model, formatting);
   no headless-browser UI tests — the phone is the test.
 
-## State (2026-09-09, after slice ui.3)
+## State (2026-09-09, after slice ui.4)
 
 Slices landed on `main`:
 - **a** — bridge `/hello` + bearer auth.
@@ -271,6 +271,9 @@ Slices landed on `main`:
   floated into the last line), reaction pill expands on focus. Long
   messages clamp to ~6 lines until focused; `nav.js` `opts.scroller`
   pages through an item taller than the screen before moving focus.
+- **ui.4** — inline 200×120 thumbnails in image bubbles from the same
+  scaled route. `lib/thumbs.js`: app-level blob-URL cache, 30 entries,
+  oldest revoked, one fetch per id, sequential fetching, failures retry.
 
 WS protocol so far (all JSON, one object per frame): client→bridge
 `auth` first, then requests `{type, id, ...}` (`signal.send`,
