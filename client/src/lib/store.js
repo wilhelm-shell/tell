@@ -36,12 +36,58 @@ function titleIsName(msg) {
   return !!(msg.group ? msg.group.name : (msg.direction === 'in' && msg.sourceName));
 }
 
+// Read marks persisted per conversation: at most this many keys.
+const LAST_READ_CAP = 100;
+
 export function createStore(opts) {
   const cap = (opts && opts.cap) || 200;
   const convs = [];          // newest activity first
   const listeners = [];
   let total = 0;
   let seq = 0;               // arrival order; wall-clock timestamps may be stale for sync messages
+
+  // Unread = incoming messages newer than the conversation's read mark.
+  // A timestamp rather than a counter, so the backlog replayed after the
+  // app was killed is counted correctly against a mark saved earlier.
+  const lastRead = {};
+  if (opts && opts.lastRead) {
+    for (const k in opts.lastRead) {
+      if (typeof opts.lastRead[k] === 'number') lastRead[k] = opts.lastRead[k];
+    }
+  }
+  const onLastRead = opts && typeof opts.onLastRead === 'function' ? opts.onLastRead : null;
+
+  function setLastRead(key, ts) {
+    if (!(ts > (lastRead[key] || 0))) return false;
+    lastRead[key] = ts;
+    // Bound the persisted map: drop the oldest mark once over the cap.
+    const keys = Object.keys(lastRead);
+    if (keys.length > LAST_READ_CAP) {
+      let oldestKey = null;
+      let oldest = Infinity;
+      for (let i = 0; i < keys.length; i++) {
+        if (lastRead[keys[i]] < oldest) { oldest = lastRead[keys[i]]; oldestKey = keys[i]; }
+      }
+      if (oldestKey !== null) delete lastRead[oldestKey];
+    }
+    if (onLastRead) {
+      const copy = {};
+      for (const k in lastRead) copy[k] = lastRead[k];
+      try { onLastRead(copy); } catch (_) {}
+    }
+    return true;
+  }
+
+  function unreadOf(conv) {
+    const mark = lastRead[conv.key] || 0;
+    let n = 0;
+    for (let i = conv.messages.length - 1; i >= 0; i--) {
+      const m = conv.messages[i].msg;
+      if (!(m.timestamp > mark)) break;   // messages are in arrival order; older ones cannot be newer
+      if (m.direction === 'in') n++;
+    }
+    return n;
+  }
 
   function find(key) {
     for (let i = 0; i < convs.length; i++) if (convs[i].key === key) return i;
@@ -98,7 +144,31 @@ export function createStore(opts) {
     convs.unshift(conv);
     total++;
     while (total > cap) evictOldest();
+    // Something we sent (from any device) means we had read everything
+    // before it.
+    if (msg.direction === 'out' && msg.timestamp) setLastRead(key, msg.timestamp);
     return true;
+  }
+
+  // The conversation is on screen: everything in it counts as read.
+  function markRead(key) {
+    const idx = find(key);
+    if (idx === -1) return false;
+    const msgs = convs[idx].messages;
+    let newest = 0;
+    for (let i = 0; i < msgs.length; i++) {
+      const ts = msgs[i].msg.timestamp || 0;
+      if (ts > newest) newest = ts;
+    }
+    if (!setLastRead(key, newest)) return false;
+    notify();
+    return true;
+  }
+
+  function totalUnread() {
+    let n = 0;
+    for (let i = 0; i < convs.length; i++) n += unreadOf(convs[i]);
+    return n;
   }
 
   function add(msg) {
@@ -122,7 +192,13 @@ export function createStore(opts) {
     const out = [];
     for (let i = 0; i < n; i++) {
       const c = convs[i];
-      out.push({ key: c.key, title: c.title, last: c.messages[c.messages.length - 1].msg, count: c.messages.length });
+      out.push({
+        key: c.key,
+        title: c.title,
+        last: c.messages[c.messages.length - 1].msg,
+        count: c.messages.length,
+        unread: unreadOf(c),
+      });
     }
     return out;
   }
@@ -145,5 +221,14 @@ export function createStore(opts) {
     };
   }
 
-  return { add: add, addMany: addMany, list: list, get: get, subscribe: subscribe, size: function () { return total; } };
+  return {
+    add: add,
+    addMany: addMany,
+    list: list,
+    get: get,
+    markRead: markRead,
+    totalUnread: totalUnread,
+    subscribe: subscribe,
+    size: function () { return total; },
+  };
 }

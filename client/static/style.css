@@ -103,10 +103,18 @@ main#body {
 }
 .row-title {
   flex: 1;
-  font-weight: bold;
+  font-weight: normal;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.row.unread .row-title { font-weight: bold; color: #fff; }
+.row-unread {
+  color: #3aa0e6;
+  font-weight: bold;
+  font-size: 12px;
+  margin-left: 6px;
+  white-space: nowrap;
 }
 .row-time {
   color: #aaa;

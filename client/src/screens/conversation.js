@@ -77,6 +77,9 @@ export function render(root, ctx) {
     // List items are not focusable elements, so this never steals the
     // caret from the reply input while composing.
     ring.focusAt(followTail ? shown.length - 1 : Math.min(prev, shown.length - 1));
+    // On screen means read. markRead notifies the store only when the
+    // mark actually moved, so this does not loop back into renderMessages.
+    app.store.markRead(key);
   }
 
   function setSoftkeys(left, right) {

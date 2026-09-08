@@ -5,8 +5,14 @@
 import { connect, toWsUrl } from './lib/ws.js';
 import { getBridgeConfig, DEFAULTS } from './config.js';
 import { createStore, parseKey } from './lib/store.js';
+import { loadLastRead, saveLastRead } from './lib/readState.js';
+import { reconnectDelay } from './lib/backoff.js';
 
-export const store = createStore({ cap: DEFAULTS.messageCacheCap });
+export const store = createStore({
+  cap: DEFAULTS.messageCacheCap,
+  lastRead: loadLastRead(),
+  onLastRead: saveLastRead,
+});
 
 // conn: 'idle' | 'no-config' | 'connecting' | 'connected' | 'disconnected' | 'error'
 const state = { conn: 'idle', detail: '', signal: '—' };
@@ -17,6 +23,11 @@ let ws = null;
 // carries the same id (see server.js handleRequest).
 const pending = {};
 let nextRequestId = 1;
+
+// Automatic reconnect: only while the app is visible, with a capped
+// backoff (see lib/backoff.js). A deliberate close never schedules one.
+let retryTimer = null;
+let retryAttempt = 0;
 
 export function getState() { return state; }
 
@@ -62,13 +73,42 @@ function onServerEvent(msg) {
   }
 }
 
+function isVisible() {
+  // Feature-detected: if the Page Visibility API is missing, assume visible.
+  return typeof document === 'undefined' || typeof document.hidden !== 'boolean' || !document.hidden;
+}
+
+function cancelRetry() {
+  if (retryTimer !== null) { clearTimeout(retryTimer); retryTimer = null; }
+}
+
+function scheduleRetry() {
+  cancelRetry();
+  if (!isVisible()) return;
+  const delay = reconnectDelay(retryAttempt++);
+  retryTimer = setTimeout(function () {
+    retryTimer = null;
+    if (isVisible() && !isConnected()) connectBridge({ auto: true });
+  }, delay);
+}
+
 export function disconnectBridge() {
-  if (ws) { try { ws.close(); } catch (_) {} ws = null; }
+  cancelRetry();
+  if (ws) {
+    // Our own close: detach the handler first so it is not mistaken for
+    // a dropped connection and retried.
+    ws.onclose = null;
+    try { ws.close(); } catch (_) {}
+    ws = null;
+  }
   failAllPending('disconnected');
 }
 
-export async function connectBridge() {
+// opts.auto: called by the retry timer; a manual call resets the backoff.
+export async function connectBridge(opts) {
+  const auto = !!(opts && opts.auto);
   disconnectBridge();
+  if (!auto) retryAttempt = 0;
   const cfg = getBridgeConfig();
   if (!cfg) { set({ conn: 'no-config', detail: '', signal: '—' }); return; }
   set({ conn: 'connecting', detail: '', signal: '—' });
@@ -80,18 +120,33 @@ export async function connectBridge() {
       onEvent: onServerEvent,
     });
     ws = res.ws;
+    retryAttempt = 0;
     ws.onclose = function () {
       ws = null;
       failAllPending('disconnected');
       set({ conn: 'disconnected', detail: '', signal: '—' });
+      scheduleRetry();
     };
     set({ conn: 'connected', detail: res.hello && res.hello.service ? res.hello.service : '' });
   } catch (err) {
     set({ conn: 'error', detail: err.message, signal: '—' });
+    scheduleRetry();
   }
 }
 
 export function isConnected() { return state.conn === 'connected' || state.conn === 'connecting'; }
+
+// The CLAUDE.md lifecycle rule: the app is killed or frozen in the
+// background, so reconnect whenever it comes back to the foreground.
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+  document.addEventListener('visibilitychange', function () {
+    if (isVisible()) {
+      if (!isConnected()) connectBridge();
+    } else {
+      cancelRetry();
+    }
+  });
+}
 
 // Send a request frame and resolve with the bridge's reply result.
 export function request(type, fields) {

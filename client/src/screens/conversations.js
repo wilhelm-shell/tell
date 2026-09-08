@@ -52,7 +52,8 @@ export function render(root, ctx) {
   let pendingFocusKey = ctx.params && ctx.params.focusKey ? ctx.params.focusKey : null;
 
   function renderStatus(s) {
-    title.textContent = 'tell · ' + statusWord(s);
+    const unread = app.store.totalUnread();
+    title.textContent = 'tell' + (unread > 0 ? ' (' + unread + ')' : '') + ' · ' + statusWord(s);
     dot.className = 'dot ' + statusDot(s);
     if (s.conn === 'connected') {
       status.textContent = '';
@@ -69,6 +70,7 @@ export function render(root, ctx) {
 
   function renderList() {
     const rows = app.store.list(MAX_ROWS);
+    renderStatus(app.getState());   // the title bar carries the unread total
     if (rows.length === 0) {
       list.innerHTML = '<li class="empty">No conversations yet. Incoming messages appear here.</li>';
       return;
@@ -82,9 +84,10 @@ export function render(root, ctx) {
       const r = rows[i];
       if (pendingFocusKey && r.key === pendingFocusKey) { focused = i; pendingFocusKey = null; }
       html +=
-        '<li class="row" data-focusable data-key="' + escapeHtml(r.key) + '">' +
+        '<li class="row' + (r.unread > 0 ? ' unread' : '') + '" data-focusable data-key="' + escapeHtml(r.key) + '">' +
           '<div class="row-top">' +
             '<span class="row-title">' + escapeHtml(r.title) + '</span>' +
+            (r.unread > 0 ? '<span class="row-unread">' + r.unread + '</span>' : '') +
             '<span class="row-time">' + escapeHtml(formatTime(r.last.timestamp)) + '</span>' +
           '</div>' +
           '<div class="row-preview">' + escapeHtml(formatPreview(r.last)) + '</div>' +

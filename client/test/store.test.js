@@ -122,3 +122,52 @@ test('parseKey inverts conversationKey', () => {
   assert.deepEqual(parseKey('junk'), {});
   assert.deepEqual(parseKey(null), {});
 });
+
+// --- unread / read marks ----------------------------------------------------
+
+test('unread counts incoming messages newer than the read mark', () => {
+  const s = createStore({ cap: 100 });
+  s.add(incoming('+1', 'a', { timestamp: 10 }));
+  s.add(incoming('+1', 'b', { timestamp: 20 }));
+  s.add(incoming('+2', 'c', { timestamp: 30 }));
+  assert.deepEqual(s.list().map((r) => [r.key, r.unread]), [['p:+2', 1], ['p:+1', 2]]);
+  assert.equal(s.totalUnread(), 3);
+  assert.equal(s.markRead('p:+1'), true);
+  assert.deepEqual(s.list().map((r) => r.unread), [1, 0]);
+  assert.equal(s.markRead('p:+1'), false, 'nothing newer: no change, no notify');
+  assert.equal(s.markRead('p:+404'), false);
+  s.add(incoming('+1', 'd', { timestamp: 25 }));
+  assert.equal(s.list()[0].unread, 1);
+});
+
+test('an outgoing message marks everything before it as read', () => {
+  const s = createStore({ cap: 100 });
+  s.add(incoming('+1', 'a', { timestamp: 10 }));
+  s.add(outgoing('+1', 'reply', { timestamp: 15 }));
+  s.add(incoming('+1', 'b', { timestamp: 20 }));
+  assert.equal(s.list()[0].unread, 1);
+});
+
+test('read marks come from opts.lastRead and go out via onLastRead', () => {
+  const saved = [];
+  const s = createStore({ cap: 100, lastRead: { 'p:+1': 15, junk: 'x' }, onLastRead: (m) => saved.push(m) });
+  s.add(incoming('+1', 'old', { timestamp: 10 }));
+  s.add(incoming('+1', 'new', { timestamp: 20 }));
+  assert.equal(s.list()[0].unread, 1);
+  s.markRead('p:+1');
+  assert.deepEqual(saved, [{ 'p:+1': 20 }]);
+  s.add(incoming('+1', 'newer', { timestamp: 30 }));
+  assert.equal(s.list()[0].unread, 1);
+});
+
+test('persisted read marks are capped, oldest dropped', () => {
+  let last = null;
+  const s = createStore({ cap: 1000, onLastRead: (m) => { last = m; } });
+  for (let i = 1; i <= 101; i++) {
+    s.add(incoming('+' + i, 'x', { timestamp: i }));
+    s.markRead('p:+' + i);
+  }
+  assert.equal(Object.keys(last).length, 100);
+  assert.equal(last['p:+1'], undefined);
+  assert.equal(last['p:+101'], 101);
+});
