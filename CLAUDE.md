@@ -165,7 +165,7 @@ newer exists. Modern syntax that parses fine in Node will throw a
   parsing). Client gets logic-level tests only (nav model, formatting);
   no headless-browser UI tests — the phone is the test.
 
-## State (2026-09-08, after slice j)
+## State (2026-09-08, after slice k)
 
 Slices landed on `main`:
 - **a** — bridge `/hello` + bearer auth.
@@ -217,6 +217,10 @@ Slices landed on `main`:
   per-conversation read mark (`store.markRead`, moved by opening or by
   any message we sent), persisted in localStorage (`lib/readState.js`,
   capped at 100 keys). Row badge + total in the title bar.
+- **k** — backlog persisted to `/data/backlog.json`
+  (`bridge/src/backlogFile.js`: temp file + rename, mode 0600, corrupt →
+  empty). `BRIDGE_PERSIST` + `BRIDGE_DATA_DIR`, off for a bare bridge,
+  pinned on by Compose. Saves serialised and coalesced.
 
 WS protocol so far (all JSON, one object per frame): client→bridge
 `auth` first, then requests `{type, id, ...}`; bridge→client `hello`,
@@ -224,9 +228,6 @@ WS protocol so far (all JSON, one object per frame): client→bridge
 (live), `reply` (to a request).
 
 Next planned slices, in rough order:
-- **k** — disk persistence of the backlog on the `/data` volume behind
-  the same cap and a `BRIDGE_PERSIST` switch, so a bridge restart does
-  not empty the phone.
 - **l** — deploy the Compose stack to the Linux server behind the
   reverse proxy (HTTPS, `wss://`), link signal-cli there, point the
   phone at it. First real-world use.
