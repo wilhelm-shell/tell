@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { buildServer } from '../src/server.js';
-import { isValidId, pruneCache } from '../src/attachments.js';
+import { isValidId, pruneCache, rawContentType, RAW_MAX_BYTES } from '../src/attachments.js';
 
 const TOKEN = 'test-token-1234567890';
 
@@ -86,4 +86,33 @@ test('pruneCache deletes oldest files until under the cap', async () => {
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('GET /attachments/:id/raw streams video by extension, refuses others and oversize', async () => {
+  const f = await makeFixture();
+  writeFileSync(join(f.dir, 'clip.mp4'), Buffer.from('not really mp4 but bytes'));
+  writeFileSync(join(f.dir, 'huge.mp4'), Buffer.alloc(RAW_MAX_BYTES + 1));
+  const app = await buildServer({ token: TOKEN, attachments: { dir: f.dir, cacheDir: f.cacheDir }, logger: false });
+  try {
+    const auth = { authorization: `Bearer ${TOKEN}` };
+    const ok = await app.inject({ method: 'GET', url: '/attachments/clip.mp4/raw', headers: auth });
+    assert.equal(ok.statusCode, 200);
+    assert.equal(ok.headers['content-type'], 'video/mp4');
+    assert.equal(ok.headers['content-length'], '24');
+    assert.equal(ok.body, 'not really mp4 but bytes');
+    assert.equal((await app.inject({ method: 'GET', url: '/attachments/huge.mp4/raw', headers: auth })).statusCode, 413);
+    assert.equal((await app.inject({ method: 'GET', url: '/attachments/big.png/raw', headers: auth })).statusCode, 415, 'images go through the scaled route');
+    assert.equal((await app.inject({ method: 'GET', url: '/attachments/nope.mp4/raw', headers: auth })).statusCode, 404);
+    assert.equal((await app.inject({ method: 'GET', url: '/attachments/clip.mp4/raw' })).statusCode, 401);
+  } finally {
+    await app.close();
+    rmSync(f.root, { recursive: true, force: true });
+  }
+});
+
+test('rawContentType maps known extensions only', () => {
+  assert.equal(rawContentType('a.MP4'), 'video/mp4');
+  assert.equal(rawContentType('a.gif'), 'image/gif');
+  assert.equal(rawContentType('a.jpg'), null);
+  assert.equal(rawContentType('noext'), null);
 });

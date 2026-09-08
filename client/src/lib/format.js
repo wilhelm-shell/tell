@@ -21,6 +21,16 @@ export function firstImage(msg) {
   return null;
 }
 
+// The first video attachment, or null.
+export function firstVideo(msg) {
+  const list = attachmentList(msg);
+  for (let i = 0; i < list.length; i++) {
+    const ct = list[i].contentType || '';
+    if (ct.indexOf('video/') === 0) return list[i];
+  }
+  return null;
+}
+
 // "(image)", "(2 images)", "(video)", "(file)", "(3 attachments)".
 export function attachmentLabel(msg) {
   const n = attachmentCount(msg);

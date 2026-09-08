@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatLastMessage, formatPreview, escapeHtml, formatTime, messageBody, attachmentCount, firstImage } from '../src/lib/format.js';
+import { formatLastMessage, formatPreview, escapeHtml, formatTime, messageBody, attachmentCount, firstImage, firstVideo } from '../src/lib/format.js';
 
 test('incoming direct message uses the sender name', () => {
   const s = formatLastMessage({ direction: 'in', sourceName: 'Alice', source: '+33123456789', text: 'hello', attachments: 0, group: null });
@@ -67,4 +67,10 @@ test('attachment helpers: arrays and legacy counts, labels by kind', () => {
   assert.equal(messageBody({ text: null, attachments: 3 }), '(3 attachments)', 'legacy count from an old backlog file');
   assert.equal(firstImage({ text: 'x', attachments: 2 }), null);
   assert.equal(messageBody({ text: 'hi', attachments: [{ id: 'a.jpg', contentType: 'image/jpeg' }] }), 'hi', 'text wins');
+});
+
+test('firstVideo finds the first video attachment', () => {
+  assert.deepEqual(firstVideo({ attachments: [{ id: 'a.jpg', contentType: 'image/jpeg' }, { id: 'v.mp4', contentType: 'video/mp4' }] }), { id: 'v.mp4', contentType: 'video/mp4' });
+  assert.equal(firstVideo({ attachments: [{ id: 'a.jpg', contentType: 'image/jpeg' }] }), null);
+  assert.equal(firstVideo({ attachments: 1 }), null);
 });

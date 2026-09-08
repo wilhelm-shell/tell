@@ -1,5 +1,5 @@
 import { attachFocusRing } from '../lib/nav.js';
-import { escapeHtml, messageBody, formatTime, firstImage } from '../lib/format.js';
+import { escapeHtml, messageBody, formatTime, firstImage, firstVideo } from '../lib/format.js';
 import * as app from '../app.js';
 
 // Only the tail of a conversation is rendered; the store's global cap is
@@ -140,10 +140,13 @@ export function render(root, ctx) {
     return i >= 0 && i < shown.length ? shown[i] : null;
   }
 
+  function openable(m) {
+    return !!(m && (firstImage(m) || firstVideo(m)));
+  }
+
   function updateCenterLabel() {
     if (composing || reacting) return;
-    const m = focusedMessage();
-    skCenter.textContent = m && firstImage(m) ? 'Open' : 'React';
+    skCenter.textContent = openable(focusedMessage()) ? 'Open' : 'React';
   }
 
   function pickerItems() {
@@ -181,14 +184,15 @@ export function render(root, ctx) {
     renderReactBar();
   }
 
-  function openImage(message) {
+  function openMedia(message) {
     const image = firstImage(message);
-    if (!image) return;
+    const video = image ? null : firstVideo(message);
+    if (!image && !video) return;
     const conv = currentConv();
-    ctx.navigate('image', {
-      id: image.id,
+    ctx.navigate(image ? 'image' : 'video', {
+      id: (image || video).id,
       key: key,
-      title: conv ? conv.title : 'Image',
+      title: conv ? conv.title : (image ? 'Image' : 'Video'),
       // So the viewer can bring us back to this exact message.
       timestamp: message.timestamp,
     });
@@ -308,7 +312,7 @@ export function render(root, ctx) {
     if (e.key === 'SoftRight' || e.key === 'Backspace') { back(); e.preventDefault(); return; }
     if (e.key === 'Enter') {
       const m = focusedMessage();
-      if (m && firstImage(m)) openImage(m); else startReact();
+      if (openable(m)) openMedia(m); else startReact();
       e.preventDefault();
     }
   }

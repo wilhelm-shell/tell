@@ -262,3 +262,5 @@ main.viewer {
   background: #000;
 }
 main.viewer img { max-width: 100%; max-height: 100%; }
+
+main.viewer video { max-width: 100%; max-height: 100%; }

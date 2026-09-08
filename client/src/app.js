@@ -202,6 +202,21 @@ export function fetchAttachment(id, w, h) {
   }).then(function (res) { return res.body; });
 }
 
+// The unmodified file for media the phone plays itself (video). The
+// bridge refuses anything above its size cap, which is the point: a
+// <video> element cannot send our bearer header, so the file comes over
+// XHR as a blob and must fit in memory.
+export function fetchRawAttachment(id) {
+  const cfg = getBridgeConfig();
+  if (!cfg) return Promise.reject(new Error('no bridge config'));
+  return httpRequest({
+    url: cfg.url + '/attachments/' + encodeURIComponent(id) + '/raw',
+    token: cfg.token,
+    responseType: 'blob',
+    timeoutMs: 60000,
+  }).then(function (res) { return res.body; });
+}
+
 // Recipient directory for the picker: [{ kind, id, name }], sorted.
 export function loadContacts() {
   return request('signal.contacts', {}).then(function (res) {

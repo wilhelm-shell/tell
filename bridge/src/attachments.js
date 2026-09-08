@@ -11,6 +11,7 @@
 // in an <img src> URL.
 import sharp from 'sharp';
 import { stat, mkdir, readdir, unlink, readFile, writeFile } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
 import { join } from 'node:path';
 
 // Attachment ids are opaque filenames from signal-cli; anything else
@@ -76,7 +77,41 @@ export async function scaledImage({ dir, cacheDir, maxBytes = CACHE_MAX_BYTES },
   return buf;
 }
 
+// Raw media the phone plays itself (video, animated GIF). No transcoding
+// yet: this is the "does the device play it at all" path, so the size cap
+// is what keeps a 200 MB phone video off a 512 MB phone.
+export const RAW_MAX_BYTES = 15 * 1024 * 1024;
+const RAW_TYPES = {
+  '.mp4': 'video/mp4',
+  '.m4v': 'video/mp4',
+  '.webm': 'video/webm',
+  '.3gp': 'video/3gpp',
+  '.gif': 'image/gif',
+};
+
+// Content type for the raw route by file extension, or null when the
+// file is not something we serve raw.
+export function rawContentType(id) {
+  const m = /(\.[a-z0-9]+)$/i.exec(id);
+  return m ? (RAW_TYPES[m[1].toLowerCase()] || null) : null;
+}
+
 export function registerAttachments(app, opts) {
+  app.get('/attachments/:id/raw', async (req, reply) => {
+    const id = req.params.id;
+    if (!isValidId(id)) { reply.code(400); return { error: 'bad id' }; }
+    const type = rawContentType(id);
+    if (!type) { reply.code(415); return { error: 'not raw-servable' }; }
+    let info;
+    try { info = await stat(join(opts.dir, id)); }
+    catch (_) { reply.code(404); return { error: 'not found' }; }
+    if (info.size > RAW_MAX_BYTES) { reply.code(413); return { error: 'too large', size: info.size, max: RAW_MAX_BYTES }; }
+    reply.header('Content-Type', type);
+    reply.header('Content-Length', String(info.size));
+    reply.header('Cache-Control', 'private, max-age=86400');
+    return createReadStream(join(opts.dir, id));
+  });
+
   app.get('/attachments/:id', async (req, reply) => {
     const id = req.params.id;
     if (!isValidId(id)) { reply.code(400); return { error: 'bad id' }; }

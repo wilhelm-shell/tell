@@ -24,8 +24,8 @@ export function render(root, ctx) {
   let objectUrl = null;
   let alive = true;
 
-  // Back lands on the image message; React does the same with the
-  // picker already open, so reacting to a picture is one key from here.
+  // Back lands on the image message; React (centre) does the same with
+  // the picker already open, so reacting to a picture is one key from here.
   function back(react) {
     ctx.navigate('conversation', { key: p.key, focusTimestamp: p.timestamp, react: !!react });
   }
