@@ -180,7 +180,7 @@ newer exists. Modern syntax that parses fine in Node will throw a
   parsing). Client gets logic-level tests only (nav model, formatting);
   no headless-browser UI tests — the phone is the test.
 
-## State (2026-09-09, after slice ui.5)
+## State (2026-09-09, after slice n)
 
 Slices landed on `main`:
 - **a** — bridge `/hello` + bearer auth.
@@ -276,15 +276,31 @@ Slices landed on `main`:
   oldest revoked, one fetch per id, sequential fetching, failures retry.
 - **ui.5** — transparent launcher icon (blue bubble, white dots), app
   named "Tell", light theme (white page, grey chrome, grey/blue bubbles,
-  amber focus ring). Colours literal in `style.css`, no custom
-  properties.
+  amber focus ring).
+- **ui.6** — light/dark switch in Settings (Left/Right on the theme row,
+  applies at once, `lib/theme.js`, localStorage `tell.theme`). Palette
+  is CSS custom properties: light on `:root`, dark on `body.dark`.
+  **Custom properties verified working on the Energizer.**
+- **n** — read state on the bridge (`bridge/src/readMarks.js`,
+  `/data/readmarks.json`). Moved by `signal.markRead` from the phone, by
+  our own sends, and by Signal's `readMessages` sync from the primary
+  phone (resolved through the backlog). Whole map sent as
+  `signal.readmarks` after auth, changes as `signal.read`. Client no
+  longer persists marks. Reason: a reinstall gets a new origin and empty
+  localStorage, so the dev deploy loop kept resurrecting unread badges.
 
 WS protocol so far (all JSON, one object per frame): client→bridge
 `auth` first, then requests `{type, id, ...}` (`signal.send`,
-`signal.react`, `signal.contacts`); bridge→client `hello`,
-`signal.status`, `signal.backlog` (once, after auth), `signal.message`
-and `signal.reaction` (live), `reply` (to a request). REST: `/hello`,
+`signal.react`, `signal.markRead`, `signal.contacts`); bridge→client
+`hello`, `signal.status`, `signal.readmarks`, `signal.backlog` (once
+each, in that order after auth), `signal.message`, `signal.reaction`,
+`signal.read` (live), `reply` (to a request). REST: `/hello`,
 `/attachments/:id` (scaled JPEG), `/attachments/:id/raw` (video/GIF).
+
+Note on the dev loop: each `just deploy-phone` reinstalls under a new
+UUID, so **localStorage is wiped on every redeploy**. Anything that must
+survive belongs on the bridge; localStorage is for per-device
+preferences only (bridge url/token are re-injected by the script).
 
 Next planned slices, in rough order:
 - **l** — deploy the Compose stack to the Linux server behind the
