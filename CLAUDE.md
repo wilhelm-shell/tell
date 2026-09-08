@@ -162,7 +162,7 @@ newer exists. Modern syntax that parses fine in Node will throw a
   parsing). Client gets logic-level tests only (nav model, formatting);
   no headless-browser UI tests — the phone is the test.
 
-## State (2026-09-08, after slice f)
+## State (2026-09-08, after slice g)
 
 Slices landed on `main`:
 - **a** — bridge `/hello` + bearer auth.
@@ -185,12 +185,13 @@ Slices landed on `main`:
 - **f** — conversation list as the main screen. `client/src/app.js` owns
   the WebSocket and the store so they outlive screens; `lib/store.js`
   groups by `group.id`/`peer`, newest first, global 200-message cap.
-  Rows render through `escapeHtml`, focus via `nav.js`. Enter only
-  reconnects so far.
+  Rows render through `escapeHtml`, focus via `nav.js`.
+- **g** — conversation view (`screens/conversation.js`): Enter opens a
+  row, last 50 messages oldest→newest as focus stops, follows the tail
+  only when focus is on the newest. `navigate(name, params)` carries the
+  key in and the row to re-focus back. `formatTime` is hand-rolled.
 
 Next planned slices, in rough order:
-- **g** — conversation view: Enter opens a conversation, messages listed
-  oldest→newest, Back returns to the list.
 - **h** — bridge replay buffer: in-memory ring of the last N
   `signal.message` frames sent right after WS auth, so the list is not
   empty after the app was killed in the background.
