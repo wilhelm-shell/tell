@@ -165,7 +165,7 @@ newer exists. Modern syntax that parses fine in Node will throw a
   parsing). Client gets logic-level tests only (nav model, formatting);
   no headless-browser UI tests — the phone is the test.
 
-## State (2026-09-08, after slice k)
+## State (2026-09-08, after slice ui.2)
 
 Slices landed on `main`:
 - **a** — bridge `/hello` + bearer auth.
@@ -221,11 +221,19 @@ Slices landed on `main`:
   (`bridge/src/backlogFile.js`: temp file + rename, mode 0600, corrupt →
   empty). `BRIDGE_PERSIST` + `BRIDGE_DATA_DIR`, off for a bare bridge,
   pinned on by Compose. Saves serialised and coalesced.
+- **ui.2** — new message. Fixed `+ New message` row opens
+  `screens/newMessage.js`: filter input + contacts/groups from a new
+  `signal.contacts` request (`bridge/src/signalContacts.js` maps
+  listContacts + listGroups), pages of 50 with a focusable "…and N more"
+  row, synthetic "Send to +…" row for unknown numbers
+  (`lib/directory.js`). Conversation view can open empty with a title
+  from the picker and compose up.
 
 WS protocol so far (all JSON, one object per frame): client→bridge
-`auth` first, then requests `{type, id, ...}`; bridge→client `hello`,
-`signal.status`, `signal.backlog` (once, after auth), `signal.message`
-(live), `reply` (to a request).
+`auth` first, then requests `{type, id, ...}` (`signal.send`,
+`signal.contacts`); bridge→client `hello`, `signal.status`,
+`signal.backlog` (once, after auth), `signal.message` (live), `reply`
+(to a request).
 
 Next planned slices, in rough order:
 - **l** — deploy the Compose stack to the Linux server behind the
