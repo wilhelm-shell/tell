@@ -165,7 +165,7 @@ newer exists. Modern syntax that parses fine in Node will throw a
   parsing). Client gets logic-level tests only (nav model, formatting);
   no headless-browser UI tests — the phone is the test.
 
-## State (2026-09-08, after slice ui.2)
+## State (2026-09-08, after slice m.2)
 
 Slices landed on `main`:
 - **a** — bridge `/hello` + bearer auth.
@@ -228,14 +228,28 @@ Slices landed on `main`:
   row, synthetic "Send to +…" row for unknown numbers
   (`lib/directory.js`). Conversation view can open empty with a title
   from the picker and compose up.
+- **m.1** — reactions received. `envelopeToReaction` (dataMessage or
+  sync sentMessage; target = author + sent timestamp) → `signal.reaction`
+  frames, buffered. Store attaches one reaction per reactor to the target
+  message (idempotent); backlog applies messages then reactions. Rendered
+  as a grey line under the message. Emoji render fine on the Energizer.
+- **m.2** — reactions sent. Centre key = React: six-emoji picker,
+  Left/Right, Enter sends via `signal.react` → `sendReaction`; picking
+  the current one retracts. Bridge synthesises the outgoing frame.
 
 WS protocol so far (all JSON, one object per frame): client→bridge
 `auth` first, then requests `{type, id, ...}` (`signal.send`,
-`signal.contacts`); bridge→client `hello`, `signal.status`,
-`signal.backlog` (once, after auth), `signal.message` (live), `reply`
-(to a request).
+`signal.react`, `signal.contacts`); bridge→client `hello`,
+`signal.status`, `signal.backlog` (once, after auth), `signal.message`
+and `signal.reaction` (live), `reply` (to a request).
 
 Next planned slices, in rough order:
+- **m.3** — images received: authenticated `GET /attachments/:id`
+  serving a screen-sized version (sharp on the bridge, cached in
+  `/data`, size-capped); `(image)` placeholder + Enter opens a viewer.
+  Full-size photos must never reach the phone (12 MP ≈ 48 MB bitmap).
+- **m.4** — video / animated GIF (Signal "GIFs" are MP4): poster frame
+  first, test raw playback on device before deciding on transcoding.
 - **l** — deploy the Compose stack to the Linux server behind the
   reverse proxy (HTTPS, `wss://`), link signal-cli there, point the
   phone at it. First real-world use.
