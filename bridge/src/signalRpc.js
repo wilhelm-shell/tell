@@ -2,6 +2,7 @@ import net from 'node:net';
 import { EventEmitter } from 'node:events';
 
 const RECONNECT_DELAY_MS = 2000;
+const REQUEST_TIMEOUT_MS = 30000;
 // A single JSON-RPC line larger than this is not something we expect from
 // signal-cli; drop the buffer rather than let it grow without bound.
 const MAX_LINE_BYTES = 1 << 20;
@@ -65,9 +66,9 @@ export function envelopeToMessage(params) {
 }
 
 // Persistent TCP client for the signal-cli daemon's JSON-RPC socket.
-// The wire format is one JSON object per line. We only consume
-// notifications here (frames with a `method` and no `id`); responses to
-// requests we send ourselves are a later slice.
+// The wire format is one JSON object per line. Two kinds of frames come
+// back: notifications (a `method`, no `id`) that we turn into 'message'
+// events, and responses to our own requests, matched to the caller by `id`.
 //
 // Events: 'connected', 'disconnected' ({reason}), 'message' (see
 // envelopeToMessage). Reconnects on its own while started, since the
@@ -79,9 +80,48 @@ export class SignalRpcClient extends EventEmitter {
     this.port = opts.port || 7583;
     this.connectFn = opts.connectFn || net.connect;
     this.setTimeoutFn = opts.setTimeoutFn || setTimeout;
+    this.clearTimeoutFn = opts.clearTimeoutFn || clearTimeout;
+    this.requestTimeoutMs = opts.requestTimeoutMs || REQUEST_TIMEOUT_MS;
     this._sock = null;
+    this._connected = false;
     this._running = false;
     this._buf = '';
+    this._pending = new Map();
+    this._nextId = 1;
+  }
+
+  get connected() { return this._connected; }
+
+  // Send a JSON-RPC request; resolves with `result`, rejects on an error
+  // response, on timeout, or when the socket drops while waiting.
+  call(method, params) {
+    return new Promise((resolve, reject) => {
+      if (!this._connected || !this._sock) {
+        reject(new Error('signal-cli not connected'));
+        return;
+      }
+      const id = 'q' + this._nextId++;
+      const timer = this.setTimeoutFn(() => {
+        this._pending.delete(id);
+        reject(new Error(`signal-cli timeout (${method})`));
+      }, this.requestTimeoutMs);
+      this._pending.set(id, { resolve, reject, timer });
+      try {
+        this._sock.write(JSON.stringify({ jsonrpc: '2.0', method, params: params || {}, id }) + '\n');
+      } catch (e) {
+        this.clearTimeoutFn(timer);
+        this._pending.delete(id);
+        reject(e);
+      }
+    });
+  }
+
+  _rejectAllPending(reason) {
+    for (const [id, p] of this._pending) {
+      this.clearTimeoutFn(p.timer);
+      this._pending.delete(id);
+      p.reject(new Error(reason));
+    }
   }
 
   start() {
@@ -94,6 +134,8 @@ export class SignalRpcClient extends EventEmitter {
     this._running = false;
     const s = this._sock;
     this._sock = null;
+    this._connected = false;
+    this._rejectAllPending('signal-cli client stopped');
     if (s) { try { s.destroy(); } catch (_) {} }
   }
 
@@ -105,7 +147,9 @@ export class SignalRpcClient extends EventEmitter {
     let lastError = null;
     sock.setEncoding('utf8');
     sock.on('connect', () => {
-      if (this._sock === sock) this.emit('connected');
+      if (this._sock !== sock) return;
+      this._connected = true;
+      this.emit('connected');
     });
     sock.on('data', (chunk) => {
       if (this._sock === sock) this._onData(chunk);
@@ -116,6 +160,8 @@ export class SignalRpcClient extends EventEmitter {
     sock.on('close', () => {
       if (this._sock !== sock) return;
       this._sock = null;
+      this._connected = false;
+      this._rejectAllPending('signal-cli disconnected');
       this.emit('disconnected', { reason: lastError ? lastError.message : 'closed' });
       this._scheduleReconnect();
     });
@@ -144,6 +190,17 @@ export class SignalRpcClient extends EventEmitter {
     if (frame.method === 'receive') {
       const msg = envelopeToMessage(frame.params);
       if (msg) this.emit('message', msg);
+      return;
+    }
+    if (frame.id != null && this._pending.has(frame.id)) {
+      const p = this._pending.get(frame.id);
+      this._pending.delete(frame.id);
+      this.clearTimeoutFn(p.timer);
+      if (frame.error) {
+        p.reject(new Error(frame.error.message || 'signal-cli error'));
+      } else {
+        p.resolve(frame.result);
+      }
     }
   }
 }

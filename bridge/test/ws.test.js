@@ -158,3 +158,35 @@ test('empty backlog sends no backlog frame', async () => {
     await app.close();
   }
 });
+
+test('authed request gets a reply with the same id; failures and unknown types report ok:false', async () => {
+  const handlers = {
+    echo: async (msg) => ({ got: msg.text }),
+    boom: async () => { throw new Error('kaput'); },
+  };
+  const app = await buildServer({ token: TOKEN, handlers, logger: false });
+  await app.listen({ port: 0, host: '127.0.0.1' });
+  const url = `ws://127.0.0.1:${app.server.address().port}/ws`;
+  try {
+    const ws = new WebSocket(url);
+    await new Promise((r) => ws.once('open', r));
+    const frames = collect(ws, 4);
+    ws.send(JSON.stringify({ type: 'auth', token: TOKEN }));
+    ws.send(JSON.stringify({ type: 'echo', id: 'a', text: 'hi' }));
+    ws.send(JSON.stringify({ type: 'boom', id: 'b' }));
+    ws.send(JSON.stringify({ type: 'nope', id: 'c' }));
+    ws.send(JSON.stringify({ type: 'echo', text: 'no id, no reply' }));
+    const got = await frames;
+    assert.equal(got[0].type, 'hello');
+    // Reply order is not guaranteed: the unknown-type reply needs no await.
+    const byId = {};
+    for (const f of got.slice(1)) byId[f.id] = f;
+    const [a, b, c] = [byId.a, byId.b, byId.c];
+    assert.deepEqual(a, { type: 'reply', id: 'a', ok: true, result: { got: 'hi' } });
+    assert.deepEqual(b, { type: 'reply', id: 'b', ok: false, error: 'kaput' });
+    assert.deepEqual(c, { type: 'reply', id: 'c', ok: false, error: 'unknown request: nope' });
+    ws.close();
+  } finally {
+    await app.close();
+  }
+});

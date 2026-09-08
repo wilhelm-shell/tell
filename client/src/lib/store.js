@@ -13,6 +13,14 @@ export function conversationKey(msg) {
   return null;
 }
 
+// Inverse of conversationKey: { group } or { peer }.
+export function parseKey(key) {
+  if (typeof key !== 'string') return {};
+  if (key.slice(0, 2) === 'g:') return { group: key.slice(2) };
+  if (key.slice(0, 2) === 'p:') return { peer: key.slice(2) };
+  return {};
+}
+
 // What to call the conversation, given one message from it. Incoming
 // direct messages carry the contact's profile name; outgoing ones only
 // carry the destination number (the bridge has no contact lookup yet).

@@ -5,7 +5,14 @@ import { checkBearer, safeEqualString } from './auth.js';
 
 const WS_AUTH_TIMEOUT_MS = 5000;
 
-export async function buildServer({ token, allowedOrigins = [], signal = null, backlog = null, logger = true } = {}) {
+export async function buildServer({
+  token,
+  allowedOrigins = [],
+  signal = null,
+  backlog = null,
+  handlers = {},
+  logger = true,
+} = {}) {
   const app = Fastify({ logger });
 
   if (allowedOrigins.length > 0) {
@@ -46,6 +53,25 @@ export async function buildServer({ token, allowedOrigins = [], signal = null, b
     signal.on('status', (evt) => broadcast({ type: 'signal.status', ...evt }));
   }
 
+  // Client -> bridge requests: any authed frame with an `id` and a `type`
+  // that has a handler. The reply carries the same id so the client can
+  // match it; frames without an id are fire-and-forget and ignored.
+  async function handleRequest(socket, msg) {
+    if (!msg || typeof msg !== 'object' || msg.id == null) return;
+    const handler = handlers[msg.type];
+    let reply;
+    if (!handler) {
+      reply = { type: 'reply', id: msg.id, ok: false, error: 'unknown request: ' + msg.type };
+    } else {
+      try {
+        reply = { type: 'reply', id: msg.id, ok: true, result: await handler(msg) };
+      } catch (e) {
+        reply = { type: 'reply', id: msg.id, ok: false, error: e.message || 'error' };
+      }
+    }
+    try { socket.send(JSON.stringify(reply)); } catch (_) {}
+  }
+
   app.get('/ws', { websocket: true }, (socket) => {
     let authed = false;
 
@@ -54,10 +80,17 @@ export async function buildServer({ token, allowedOrigins = [], signal = null, b
     }, WS_AUTH_TIMEOUT_MS);
 
     socket.on('message', (raw) => {
-      if (authed) return;
       let msg;
       try { msg = JSON.parse(raw.toString()); }
-      catch (_) { socket.close(4002, 'bad json'); return; }
+      catch (_) {
+        if (!authed) socket.close(4002, 'bad json');
+        return;
+      }
+
+      if (authed) {
+        handleRequest(socket, msg);
+        return;
+      }
 
       if (!msg || msg.type !== 'auth' || typeof msg.token !== 'string') {
         socket.close(4003, 'auth expected');

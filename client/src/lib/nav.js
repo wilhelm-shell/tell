@@ -36,7 +36,11 @@ export function attachFocusRing(container) {
     if (typeof all[target].scrollIntoView === 'function') all[target].scrollIntoView(false);
   }
 
+  // A screen disables the ring while a text input owns Up/Down (T9 editing).
+  let enabled = true;
+
   function onKey(e) {
+    if (!enabled) return;
     if (e.key === 'ArrowDown') {
       focusAt(nextIndex(currentIndex(), items().length, +1));
       e.preventDefault();
@@ -53,5 +57,6 @@ export function attachFocusRing(container) {
     detach: function () { document.removeEventListener('keydown', onKey); },
     focusAt: focusAt,
     currentIndex: currentIndex,
+    setEnabled: function (v) { enabled = !!v; },
   };
 }

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createStore, conversationKey } from '../src/lib/store.js';
+import { createStore, conversationKey, parseKey } from '../src/lib/store.js';
 
 // Distinct timestamps per message: the store treats same source + timestamp as a duplicate.
 let nextTs = 1000;
@@ -114,4 +114,11 @@ test('addMany adds in order, skips duplicates, notifies once', () => {
   assert.deepEqual(s.get('p:+1').messages.map((m) => m.text), ['a', 'b']);
   assert.equal(s.addMany([]), 0);
   assert.equal(n, 2);
+});
+
+test('parseKey inverts conversationKey', () => {
+  assert.deepEqual(parseKey('g:abc='), { group: 'abc=' });
+  assert.deepEqual(parseKey('p:+41'), { peer: '+41' });
+  assert.deepEqual(parseKey('junk'), {});
+  assert.deepEqual(parseKey(null), {});
 });

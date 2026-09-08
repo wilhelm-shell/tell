@@ -120,3 +120,20 @@ main#body {
   background: #333;
   border-left-color: #ff0;
 }
+
+.compose {
+  padding: 4px 6px;
+  border-top: 1px solid #444;
+  background: #111;
+}
+.compose input {
+  width: 100%;
+  padding: 4px;
+  border: 1px solid #ff0;
+  background: #000;
+  color: #eee;
+  font-size: 14px;
+  font-family: sans-serif;
+}
+.compose input:disabled { color: #888; border-color: #444; }
+.compose-err { color: #f66; font-size: 12px; min-height: 0; }

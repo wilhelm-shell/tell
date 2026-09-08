@@ -166,3 +166,60 @@ test('client: reconnects after the daemon drops the socket, not after stop()', a
     await d.close();
   }
 });
+
+// --- requests -------------------------------------------------------------
+
+function respondTo(conn, fn) {
+  let buf = '';
+  conn.setEncoding('utf8');
+  conn.on('data', (d) => {
+    buf += d;
+    let i;
+    while ((i = buf.indexOf('\n')) !== -1) {
+      const req = JSON.parse(buf.slice(0, i));
+      buf = buf.slice(i + 1);
+      const res = fn(req);
+      if (res) conn.write(JSON.stringify(res) + '\n');
+    }
+  });
+}
+
+test('call(): result and error responses are matched by id', async () => {
+  const d = await fakeDaemon();
+  const client = new SignalRpcClient({ host: '127.0.0.1', port: d.port });
+  try {
+    client.start();
+    await once(client, 'connected');
+    const conn = await d.waitConn(1);
+    respondTo(conn, (req) => {
+      assert.equal(req.jsonrpc, '2.0');
+      if (req.method === 'listAccounts') return { jsonrpc: '2.0', result: [{ number: '+1' }], id: req.id };
+      if (req.method === 'send') return { jsonrpc: '2.0', error: { code: -1, message: 'Unregistered user' }, id: req.id };
+      return null;
+    });
+    const accounts = await client.call('listAccounts');
+    assert.deepEqual(accounts, [{ number: '+1' }]);
+    await assert.rejects(client.call('send', { message: 'x' }), /Unregistered user/);
+  } finally {
+    client.stop();
+    await d.close();
+  }
+});
+
+test('call(): times out, rejects when not connected, rejects pending on disconnect', async () => {
+  const d = await fakeDaemon();
+  const client = new SignalRpcClient({ host: '127.0.0.1', port: d.port, requestTimeoutMs: 50 });
+  try {
+    await assert.rejects(client.call('listAccounts'), /not connected/);
+    client.start();
+    await once(client, 'connected');
+    const conn = await d.waitConn(1);
+    await assert.rejects(client.call('listAccounts'), /timeout/);
+    const hanging = client.call('send', {});
+    conn.destroy();
+    await assert.rejects(hanging, /disconnected/);
+  } finally {
+    client.stop();
+    await d.close();
+  }
+});
